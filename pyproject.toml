@@ -1,42 +1,72 @@
-[tool.poetry]
+[project]
+authors = [
+    {name = "David Rebbe", email = "drebbe@intrepidcs.com"},
+]
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = [
+    "pyserial == 3.5",
+    "result == 0.17.0",
+    "pillow == 11.1.0",
+    "typing-extensions == 4.12.2",
+]
+
 name = "freewili"
-version = "0.0.0"
 description = ""
-authors = ["David Rebbe <drebbe@intrepidcs.com>"]
 readme = "README.md"
-license = "MIT"
+keywords = [
+    "freewili",
+]
+dynamic = ["version"]
+
+[project.urls]
 homepage = "https://freewili.com/"
 repository = "https://github.com/freewili/freewili-python"
-keywords = ["freewili"]
-
-[tool.poetry.dependencies]
-python = "^3.10"
-pyserial = "^3.5"
-result = "^0.17.0"
-pillow = "^10.4.0"
-typing-extensions = "^4.12.2"
-
-
-[tool.poetry.group.dev.dependencies]
-mypy = "^1.10.1"
-ruff = "^0.5.3"
-pre-commit = "^3.7.1"
 
 [build-system]
-requires = ["poetry-core", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
-build-backend = "poetry_dynamic_versioning.backend"
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
 
-[tool.poetry.scripts]
-fwi-serial = 'freewili.cli:main'
-fwi-convert = 'freewili.cli:convert'
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[tool.hatch.build.hooks.version]
+path = "freewili/_version.py"
+template = '''
+version = "{version}"
+'''
+
+[tool.uv-dynamic-versioning]
+metadata = false # I couldn't get pypi to upload with this enabled.
+strict = true
+style = "pep440"
+dirty = true
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+publish-url = "https://pypi.org/legacy"
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple"
+publish-url = "https://test.pypi.org/legacy"
+
+[project.scripts]
+fwi-serial = "freewili.cli:main"
+fwi-convert = "freewili.cli:convert"
+
+[dependency-groups]
+dev = [
+    "mypy == 1.15.0",
+    "ruff == 0.11.0",
+    "pre-commit == 4.1.0",
+]
 
 [tool.mypy]
 ignore_missing_imports = true
 disallow_untyped_defs = true
 disallow_untyped_calls = true
-
-[tool.poetry-dynamic-versioning]
-enable = true
 
 [tool.ruff]
 line-length = 120
@@ -52,6 +82,7 @@ select = [
     "N",  # PEP8 naming convetions
     "D"  # pydocstyle
 ]
+
 ignore = [
     "C901", # too complex
     "D401", # imperative mood

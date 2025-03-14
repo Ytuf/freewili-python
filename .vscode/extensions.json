@@ -3,6 +3,5 @@
         "ms-python.mypy-type-checker",
         "charliermarsh.ruff",
         "ms-python.python",
-        "zeshuaro.vscode-python-poetry"
     ]
 }

@@ -1,0 +1,42 @@
+name: "Publish to test PyPI"
+
+on:
+  push:
+
+jobs:
+  run:
+    name: "Build and publish release"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Set up Python
+        run: |
+          uv python install 3.10
+          uv venv -p 3.10
+          source .venv/bin/activate
+          uv pip install twine check-wheel-contents
+
+      - name: Build
+        run: uv build --verbose
+
+      - name: Publish
+        run: |
+          source .venv/bin/activate
+          check-wheel-contents dist/*.whl
+          twine upload -r testpypi -u __token__ -p ${{ secrets.PYPI_TEST_TOKEN }} --verbose dist/*
+          # uv publish --index testpypi -t ${{ secrets.PYPI_TEST_TOKEN }}
+      
+      - uses: actions/upload-artifact@v4
+        with:
+          name: freewili-dist
+          path: dist/
