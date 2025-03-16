@@ -1,4 +1,4 @@
-![](https://github.com/freewili/freewili-python/raw/master/logo.png)
+![](https://github.com/freewili/freewili-python/raw/master/logo.jpg)
 # FreeWili
 
 FreeWili is a Python library for controlling and communicating with FreeWili boards.
@@ -10,23 +10,6 @@ You can install freewili using pip by running the following command:
 pip install freewili
 ```
 ## Python script example
-
-### Toggle LED 25:
-```python
-
-import time
-import freewili
-
-devices = freewili.find_all()
-device = devices[0]
-
-led_state: bool = True
-device.stay_open = True
-for _ in range(100):
-    device.set_io(25, led_state)
-    led_state ^= True
-    time.sleep(0.1)
-```
 
 ### Poll I2C:
 ```python
@@ -69,16 +52,16 @@ options:
   --version             show program's version number and exit
 ```
 
-### Send file from host to freewili:
+### Send file from host to freewili (Main):
 
 ```bash
-$ fwi-serial -d /path/to/bin.wasm /scripts/bin.wasm
+$ fwi-serial -mi -s /path/to/bin.wasm -fn /scripts/bin.wasm
 ```
 
 ### Run script on the freewili:
 
 ```bash
-$ fwi-serial -w bin.wasm
+$ fwi-serial -mi -w bin.wasm
 ```
 
 ### Set IO on the freewili:
@@ -99,23 +82,27 @@ Downloaded mypicture.fwi (81816 bytes) as /images/mypicture.fwi to Display v28 /
 ```
 ## Development
 
-```
-pip install poetry
-poetry self add "poetry-dynamic-versioning[plugin]"
-poetry install
-poetry run fwi-serial --help
-
+Initial setup:
+```bash
+pip install uv
+uv venv
+source .venv/bin/activate
+uv sync
 pre-commit install
 ```
+
+VSCode setup:
+- Install recommended extensions
+- Point vscode to the virtual environmenet managed by uv (`.venv`)
+`> Python: Select Interpreter`
+- Choose which cli to debug:
+`> Debug: Select and Start Debugging`
+- F5 starts debugging
 
 ### Dependencies
 #### Installing Python 3.10+
 
 If you don't already have Python 3.10+ installed, you can download it from the official Python website: <https://www.python.org/downloads/>. Follow the installation instructions for your operating system.
-
-#### Installing Poetry
-
-Poetry is a package manager for Python that makes it easy to install and manage the dependencies needed for FreeWili. To install Poetry, follow the instructions at <https://python-poetry.org/docs/#installation>.
 
 #### Installing VSCode
 
@@ -125,7 +112,6 @@ To install VSCode, follow the instructions at <https://code.visualstudio.com/doc
 #### Installing recommended extensions in VSCode
 
 See https://code.visualstudio.com/docs/editor/extension-marketplace#_recommended-extensions
-
 
 
 ## License

@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: Poetry run fwi-serial with Arguments",
+            "name": "Python Debugger: run fwi-serial with Arguments",
             "type": "debugpy",
             "request": "launch",
             "console": "integratedTerminal",
@@ -14,7 +14,19 @@
             "python": "${command:python.interpreterPath}",
             "cwd": "${workspaceFolder}",
             "args": "${command:pickArgs}",
-            "module": "poetry run fwi-serial",
+            "module": "freewili.cli_serial",
+        },
+        {
+            "name": "Python Debugger: run fwi-convert with Arguments",
+            "type": "debugpy",
+            "request": "launch",
+            "console": "integratedTerminal",
+            "stopOnEntry": false,
+            "justMyCode": true,
+            "python": "${command:python.interpreterPath}",
+            "cwd": "${workspaceFolder}",
+            "args": "${command:pickArgs}",
+            "module": "freewili.cli_convert",
         }
     ]
 }

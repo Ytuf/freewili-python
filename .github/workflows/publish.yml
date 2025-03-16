@@ -29,7 +29,11 @@ jobs:
       - name: Build
         run: uv build --verbose
 
+      - name: Test
+        run: uv run pytest
+
       - name: Publish
+        if: ${{ github.ref_name	 == 'master' }}
         run: |
           source .venv/bin/activate
           check-wheel-contents dist/*.whl
@@ -38,5 +42,6 @@ jobs:
       
       - uses: actions/upload-artifact@v4
         with:
-          name: freewili-dist
+          name: freewili-dist-${{ github.sha }}
           path: dist/
+          

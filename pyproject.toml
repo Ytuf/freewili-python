@@ -6,9 +6,9 @@ license = {text = "MIT"}
 requires-python = ">=3.10"
 dependencies = [
     "pyserial == 3.5",
-    "result == 0.17.0",
     "pillow == 11.1.0",
     "typing-extensions == 4.12.2",
+    "result@git+https://github.com/montasaurus/result",
 ]
 
 name = "freewili"
@@ -26,6 +26,9 @@ repository = "https://github.com/freewili/freewili-python"
 [build-system]
 requires = ["hatchling", "uv-dynamic-versioning"]
 build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.version]
 source = "uv-dynamic-versioning"
@@ -52,15 +55,19 @@ name = "testpypi"
 url = "https://test.pypi.org/simple"
 publish-url = "https://test.pypi.org/legacy"
 
+[tool.uv.sources]
+result = { git = "https://github.com/montasaurus/result" }
+
 [project.scripts]
-fwi-serial = "freewili.cli:main"
-fwi-convert = "freewili.cli:convert"
+fwi-serial = "freewili.cli_serial:main"
+fwi-convert = "freewili.cli_convert:main"
 
 [dependency-groups]
 dev = [
     "mypy == 1.15.0",
     "ruff == 0.11.0",
     "pre-commit == 4.1.0",
+    "pytest>=8.3.5",
 ]
 
 [tool.mypy]
