@@ -33,6 +33,12 @@ jobs:
       - name: Test
         run: uv run pytest
 
+      - name: Documentation
+        run: |
+          source .venv/bin/activate
+          uv sync --dev
+          sphinx-build doc/source/ doc/build
+
       - name: Publish
         if: ${{ github.ref_name	 == 'master' }}
         run: |
@@ -45,5 +51,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: freewili-dist-${{ github.sha }}
-          path: dist/
+          path: |
+            dist/
+            doc/build/
           
