@@ -20,6 +20,10 @@ Contents
    :maxdepth: 3
 
    index
+   examples
+   fw
    serial
    image
+   usb_util
+   types
    dev

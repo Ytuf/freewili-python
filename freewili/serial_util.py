@@ -4,13 +4,14 @@ This module provides functionality to find and control FreeWili boards.
 """
 
 import dataclasses
-import enum
 import functools
 import pathlib
 import re
 import sys
 import time
 from typing import Any, Callable, List, Optional, Tuple
+
+from freewili.usb_util import USB_PID_FW_FTDI, USB_VID_FW_FTDI
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -21,16 +22,7 @@ import serial
 import serial.tools.list_ports
 from result import Err, Ok, Result
 
-
-class FreeWiliProcessorType(enum.Enum):
-    """Processor type of the FreeWili."""
-
-    Unknown = enum.auto()
-    Main = enum.auto()
-    Display = enum.auto()
-
-    def __str__(self) -> str:
-        return self.name
+from freewili.types import FreeWiliProcessorType
 
 
 @dataclasses.dataclass
@@ -41,7 +33,10 @@ class FreeWiliAppInfo:
     version: int
 
     def __str__(self) -> str:
-        return f"{self.processor_type} v{self.version}"
+        desc = f"{self.processor_type.name}"
+        if self.processor_type in (FreeWiliProcessorType.Main, FreeWiliProcessorType.Display):
+            desc += f" v{self.version}"
+        return desc
 
 
 # Disable menu Ctrl+b
@@ -53,15 +48,17 @@ CMD_ENABLE_MENU = b"\x03"
 RPI_VID = 0x2E8A
 # Raspberry Pi Pico SDK CDC UART Product ID
 RPI_CDC_PID = 0x000A
+# Raspberry Pi Pico SDK UF2 Product ID
+RPI_UF2_PID = 0x0003
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(frozen=False)
 class FreeWiliSerialInfo:
     """Information of the COM Port of the FreeWili."""
 
     # COM port of the FreeWili, e.g. 'COM1' or '/dev/ttyACM0'
     port: str
-    # Serial number of the FreeWili
+    # Serial number. This is the RPi serial number on Main and Display
     serial: str
     # Application information of the FreeWili firmware
     app_info: FreeWiliAppInfo
@@ -71,6 +68,14 @@ class FreeWiliSerialInfo:
     vid: Optional[int] = None
     # Product ID of the FreeWili (0x000A), Optional
     pid: Optional[int] = None
+    # FreeWili Serial
+    fw_serial: None | str = None
+
+    def __str__(self) -> str:
+        desc = f"{self.app_info.processor_type.name} ({self.serial} @ {self.port})"
+        if self.app_info.processor_type in (FreeWiliProcessorType.Main, FreeWiliProcessorType.Display):
+            desc = f"{self.app_info} ({self.serial} @ {self.port})"
+        return desc
 
 
 class FreeWiliSerial:
@@ -89,7 +94,7 @@ class FreeWiliSerial:
         return f"<{self.__class__.__name__} {self._info}>"
 
     def __str__(self) -> str:
-        return f"{self._info.app_info} {self._info.port} @ {self._info.location}"
+        return f"{self._info}"
 
     @property
     def info(self) -> FreeWiliSerialInfo:
@@ -109,13 +114,15 @@ class FreeWiliSerial:
     def stay_open(self, value: bool) -> None:
         self._stay_open = value
 
-    def close(self) -> None:
+    def close(self, restore_menu: bool = True) -> None:
         """Close the serial port. Use in conjunction with stay_open."""
         if self._serial.is_open:
+            if restore_menu:
+                self._set_menu_enabled(True)
             self._serial.close()
 
     @staticmethod
-    def needs_open(enable_menu: bool = False) -> Callable:
+    def needs_open(enable_menu: bool = False, restore_menu: bool = True) -> Callable:
         """Decorator to open and close serial port.
 
         Expects the class to have an attribute '_serial' that is a serial.Serial object
@@ -125,6 +132,9 @@ class FreeWiliSerial:
         ----------
             enable_menu: bool
                 Enable menu if True. Defaults to False.
+
+            restore_menu: bool
+                Restore the menu after we are done. Defaults to True.
 
         Example:
         -------
@@ -147,10 +157,11 @@ class FreeWiliSerial:
                     self._set_menu_enabled(enable_menu)
                 try:
                     result = func(self, *args, **kwargs)
+                    self._set_menu_enabled(True)
                     return result
                 finally:
                     if not self.stay_open:
-                        self._serial.close()
+                        self.close(restore_menu)
                     result = None
 
             return wrapper
@@ -690,7 +701,23 @@ def find_all(processor_type: Optional[FreeWiliProcessorType] = None) -> tuple[Fr
     # vid 11914
     devices: list[FreeWiliSerial] = []
     for port in serial.tools.list_ports.comports():
-        if port.vid == RPI_VID and port.pid == RPI_CDC_PID:
+        if port.vid == USB_VID_FW_FTDI and port.pid == USB_PID_FW_FTDI:
+            devices.append(
+                FreeWiliSerial(
+                    FreeWiliSerialInfo(
+                        port.device,
+                        port.serial_number,
+                        FreeWiliAppInfo(
+                            FreeWiliProcessorType.FTDI,
+                            0,
+                        ),
+                        port.location,
+                        port.vid,
+                        port.pid,
+                    )
+                ),
+            )
+        elif port.vid == RPI_VID and port.pid == RPI_CDC_PID:
             devices.append(
                 FreeWiliSerial(
                     FreeWiliSerialInfo(

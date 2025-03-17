@@ -1,2 +1,2 @@
 # noqa
-from .serial import find_all  # noqa
+from .fw import FreeWili  # noqa

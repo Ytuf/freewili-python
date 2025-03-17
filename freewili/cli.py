@@ -4,12 +4,10 @@ This module provides a command line interface to find and control FreeWili board
 """
 
 import sys
-from typing import Union
 
 from result import Err, Ok, Result
 
-from freewili import serial
-from freewili.serial import FreeWiliProcessorType
+from freewili.fw import FreeWili
 
 
 def exit_with_error(msg: str, exit_code: int = 1) -> None:
@@ -31,21 +29,24 @@ def exit_with_error(msg: str, exit_code: int = 1) -> None:
 
 
 def get_device(
-    index: int, processor_type: Union[FreeWiliProcessorType | None] = None
-) -> Result[serial.FreeWiliSerial, str]:
-    """Get a FreeWiliSerial by index.
+    index: int,
+    devices: tuple[FreeWili, ...],
+) -> Result[FreeWili, str]:
+    """Get a FreeWili by index.
 
     Parameters:
     ----------
         index: int
             The index to be checked.
 
+        devices: tuple[FreeWili]
+            container of FreeWili to reference
+
     Returns:
     -------
-        Result[serial.FreeWiliSerial, str]:
-            The FreeWiliSerial if the index is valid, otherwise an error message.
+        Result[FreeWili, str]:
+            The FreeWili if the index is valid, otherwise an error message.
     """
-    devices = serial.find_all(processor_type)
     if index >= len(devices):
         return Err(f"Index {index} is out of range. There are only {len(devices)} devices.")
     return Ok(devices[index])

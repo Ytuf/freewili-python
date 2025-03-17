@@ -9,9 +9,9 @@ import pathlib
 
 from result import Err, Ok
 
-from freewili import serial
+from freewili import FreeWili
 from freewili.cli import exit_with_error, get_device
-from freewili.serial import FreeWiliProcessorType
+from freewili.serial_util import FreeWiliProcessorType
 
 
 def main() -> None:
@@ -66,12 +66,12 @@ def main() -> None:
         nargs=1,
         help="Set the name of the file in the FreeWili. Argument should be in the form of: <file_name>",
     )
-    parser.add_argument(
-        "-u",
-        "--get_file",
-        nargs=2,
-        help="Get a file from the FreeWili. Argument should be in the form of: <source_file> <target_name>",
-    )
+    # parser.add_argument(
+    #     "-u",
+    #     "--get_file",
+    #     nargs=2,
+    #     help="Get a file from the FreeWili. Argument should be in the form of: <source_file> <target_name>",
+    # )
     parser.add_argument(
         "-w",
         "--run_script",
@@ -97,32 +97,33 @@ def main() -> None:
         processor_type = FreeWiliProcessorType.Main
     elif args.display_index is not None:
         processor_type = FreeWiliProcessorType.Display
-
+    devices = FreeWili.find_all()
     if args.list:
-        devices = serial.find_all(processor_type)
         print(f"Found {len(devices)} FreeWili(s)")
         for i, free_wili in enumerate(devices, start=1):
-            print(f"\t{i}. {free_wili}")
+            print(f"{i}. {free_wili}")
+            print(f"\t{free_wili.main}")
+            print(f"\t{free_wili.display}")
+            print(f"\t{free_wili.ftdi}")
     if args.send_file:
-        match get_device(device_index, processor_type):
+        match get_device(device_index, devices):
             case Ok(device):
+                file_name = None
                 if args.file_name:
                     file_name = args.file_name[0]
-                else:
-                    file_name = "/scripts/" + pathlib.Path(args.send_file[0]).name
-                print(device.send_file(args.send_file[0], file_name).unwrap())
+                print(device.send_file(args.send_file[0], file_name, processor_type).unwrap())
             case Err(msg):
                 exit_with_error(msg)
-    if args.get_file:
-        match get_device(device_index, processor_type):
-            case Ok(device):
-                data = device.get_file(args.get_file[0]).unwrap()
-                with open(args.get_file[1], "w+b") as f:
-                    f.write(data)
-            case Err(msg):
-                exit_with_error(msg)
+    # if args.get_file:
+    #     match get_device(device_index, devices):
+    #         case Ok(device):
+    #             data = device.get_file(args.get_file[0]).unwrap()
+    #             with open(args.get_file[1], "w+b") as f:
+    #                 f.write(data)
+    #         case Err(msg):
+    #             exit_with_error(msg)
     if args.run_script is not None:
-        match get_device(device_index, processor_type):
+        match get_device(device_index, devices):
             case Ok(device):
                 if args.run_script:
                     script_name = args.run_script
@@ -138,7 +139,7 @@ def main() -> None:
     if args.set_io:
         io_pin: int = int(args.set_io[0])
         is_high: bool = args.set_io[1].upper() == "HIGH"
-        match get_device(device_index, processor_type):
+        match get_device(device_index, devices):
             case Ok(device):
                 print("Setting IO pin", io_pin, "to", "high" if is_high else "low")
                 print(device.set_io(io_pin, is_high).unwrap_or("Failed to set IO pin"))

@@ -9,7 +9,8 @@ Serial Examples
 .. code-block:: python
     :caption: Search for FreeWilis connected over USB
         
-        from freewili.serial import find_all, FreeWiliProcessorType
+        from freewili.serial import find_all
+        from freewili.types import FreeWiliProcessorType
         
         # Find all main processors
         devices = serial.find_all(FreeWiliProcessorType.Main)
@@ -27,7 +28,8 @@ Serial Examples
 .. code-block:: python
     :caption: Send a file to the FreeWili
         
-        from freewili.serial import find_all, FreeWiliProcessorType
+        from freewili.serial import find_all
+        from freewili.types import FreeWiliProcessorType
 
         # Find the first Main Processor.
         first_device = freewili.find_all(FreeWiliProcessorType.Main)[0]
@@ -37,7 +39,8 @@ Serial Examples
 .. code-block:: python
     :caption: Force main processor into UF2 bootloader
     
-        from freewili.serial import find_all, FreeWiliProcessorType
+        from freewili.serial import find_all
+        from freewili.types import FreeWiliProcessorType
 
         # Find the first Main Processor.
         first_device = freewili.find_all(FreeWiliProcessorType.Main)[0]
