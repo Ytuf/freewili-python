@@ -257,8 +257,11 @@ class FileMap:
         mappings = {
             "wasm": (FreeWiliProcessorType.Main, "/scripts", "WASM binary"),
             "wsm": (FreeWiliProcessorType.Main, "/scripts", "WASM binary"),
+            "zio": (FreeWiliProcessorType.Main, "/scripts", "ZoomIO script file"),
+            "bit": (FreeWiliProcessorType.Main, "/fpga", "FPGA bit file"),
             "sub": (FreeWiliProcessorType.Display, "/radio", "Radio file"),
             "fwi": (FreeWiliProcessorType.Display, "/images", "Image file"),
+            "wav": (FreeWiliProcessorType.Display, "/audio", "Audio file"),
         }
         if ext not in mappings:
             raise ValueError(f"Extension '{ext}' is not a known FreeWili file type")
