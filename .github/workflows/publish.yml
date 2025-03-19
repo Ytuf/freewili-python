@@ -63,6 +63,9 @@ jobs:
   
   # Deployment job
   deploy:
+    permissions:
+      issues: write
+      pull-requests: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
