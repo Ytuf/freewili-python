@@ -22,8 +22,9 @@ keywords = [
 dynamic = ["version"]
 
 [project.urls]
-homepage = "https://freewili.com/"
-repository = "https://github.com/freewili/freewili-python"
+Homepage = "https://freewili.com/"
+Repository = "https://github.com/freewili/freewili-python"
+Documentation = "https://freewili.github.io/freewili-python/"
 
 [build-system]
 requires = ["hatchling", "uv-dynamic-versioning"]
