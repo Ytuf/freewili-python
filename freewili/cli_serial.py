@@ -11,7 +11,8 @@ from result import Err, Ok
 
 from freewili import FreeWili
 from freewili.cli import exit_with_error, get_device
-from freewili.serial_util import FreeWiliProcessorType
+from freewili.fw import GPIO_MAP
+from freewili.serial_util import FreeWiliProcessorType, IOMenuCommand
 
 
 def main() -> None:
@@ -81,9 +82,44 @@ def main() -> None:
     )
     parser.add_argument(
         "-io",
-        "--set_io",
-        nargs=2,
-        help="Toggle IO pin to high. Argument should be in the form of: <io_pin> <high/low>",
+        "--io",
+        nargs="*",
+        help=(
+            "Set IO. Argument should be in the form of: <io_pin> <high/low/toggle/pwm> [pwm_freq] [pwm_duty].\n"
+            "No arguments gets all IO values."
+        ),
+    )
+    parser.add_argument(
+        "-led",
+        "--led",
+        nargs=4,
+        help="Set Board LEDs. Argument should be in the form of: <LED #> <red 0-255> <green 0-255> <blue 0-255>",
+    )
+    parser.add_argument(
+        "-gi",
+        "--gui_image",
+        nargs=1,
+        help="Show GUI Image. Argument should be in the form of: <image path>",
+    )
+    parser.add_argument(
+        "-gt",
+        "--gui_text",
+        nargs=1,
+        help="Show GUI Text. Argument should be in the form of: <text>",
+    )
+    parser.add_argument(
+        "-rb",
+        "--read_buttons",
+        action="store_true",
+        default=False,
+        help="Read buttons.",
+    )
+    parser.add_argument(
+        "-rd",
+        "--reset_display",
+        action="store_true",
+        default=False,
+        help="Reset the display back to the main menu.",
     )
     parser.add_argument(
         "--version",
@@ -136,13 +172,119 @@ def main() -> None:
                 print(device.run_script(script_name).unwrap())
             case Err(msg):
                 exit_with_error(msg)
-    if args.set_io:
-        io_pin: int = int(args.set_io[0])
-        is_high: bool = args.set_io[1].upper() == "HIGH"
+    if args.io is not None:
+        io_args_length = len(args.io)
+        if io_args_length == 0:
+            match get_device(device_index, devices):
+                case Ok(device):
+                    print("Getting IO pin values...")
+                    match device.get_io():
+                        case Ok(values):
+                            for io_num, io_name in GPIO_MAP.items():
+                                print(f"{io_name}: {values[io_num]}")
+                        case Err(msg):
+                            exit_with_error(msg)
+                case Err(msg):
+                    exit_with_error(msg)
+        else:
+            io_pin: int = int(args.io[0])
+            menu_cmd: IOMenuCommand = IOMenuCommand.from_string(args.io[1].lower())
+            pwm_freq_hz = None
+            pwm_duty_cycle = None
+            if menu_cmd is IOMenuCommand.Pwm:
+                io_args_length = len(args.io)
+                if io_args_length < 4:
+                    exit_with_error(f"Expected 4 parameters to -io, got {io_args_length}")
+                pwm_freq_hz = int(args.io[2])
+                pwm_duty_cycle = int(args.io[3])
+            match get_device(device_index, devices):
+                case Ok(device):
+                    print(f"Setting IO pin {io_pin} {menu_cmd.name} ", end="")
+                    if io_args_length >= 4:
+                        print(f"PWM Frequency: {pwm_freq_hz}Hz {pwm_duty_cycle}%", end="")
+                    print()
+                    resp = device.set_io(io_pin, menu_cmd, pwm_freq_hz, pwm_duty_cycle).unwrap_or(
+                        "Failed to configure IO pin"
+                    )
+                    if not resp.is_ok():
+                        exit_with_error(f"Failed to configure IO pin: {resp.response}")
+                    print(f"Successfully configured pin {io_pin} {menu_cmd.name}")
+                case Err(msg):
+                    exit_with_error(msg)
+    if args.led:
+        led_num = args.led[0]
+        red = args.led[1]
+        green = args.led[2]
+        blue = args.led[3]
         match get_device(device_index, devices):
             case Ok(device):
-                print("Setting IO pin", io_pin, "to", "high" if is_high else "low")
-                print(device.set_io(io_pin, is_high).unwrap_or("Failed to set IO pin"))
+                print(f"Setting LED {led_num} to RGB: {red}, {green}, {blue}...")
+                match device.set_board_leds(led_num, red, green, blue):
+                    case Ok(resp):
+                        if not resp.is_ok():
+                            exit_with_error(f"Failed to set LED {resp.response}")
+                        else:
+                            print(f"Successfully set LED {led_num}")
+                    case Err(msg):
+                        exit_with_error(msg)
+            case Err(msg):
+                exit_with_error(msg)
+    if args.gui_image:
+        value = args.gui_image[0]
+        match get_device(device_index, devices):
+            case Ok(device):
+                print(f"Showing Image {value}...")
+                match device.show_gui_image(value):
+                    case Ok(resp):
+                        if not resp.is_ok():
+                            exit_with_error(f"Failed to show Image {resp.response}")
+                        else:
+                            print(f"Successfully showing {value}")
+                    case Err(msg):
+                        exit_with_error(msg)
+            case Err(msg):
+                exit_with_error(msg)
+    if args.gui_text:
+        value = args.gui_text[0]
+        match get_device(device_index, devices):
+            case Ok(device):
+                print(f"Showing text {value}...")
+                match device.show_text_display(value):
+                    case Ok(resp):
+                        if not resp.is_ok():
+                            exit_with_error(f"Failed to show text {resp.response}")
+                        else:
+                            print(f"Successfully showing {value}")
+                    case Err(msg):
+                        exit_with_error(msg)
+            case Err(msg):
+                exit_with_error(msg)
+    if args.read_buttons:
+        match get_device(device_index, devices):
+            case Ok(device):
+                print("Getting button values...")
+                match device.read_all_buttons():
+                    case Ok(resp):
+                        if not resp.is_ok():
+                            exit_with_error(f"Failed to show text {resp.response}")
+                        else:
+                            print(resp.response)
+                    case Err(msg):
+                        exit_with_error(msg)
+            case Err(msg):
+                exit_with_error(msg)
+    if args.reset_display:
+        match get_device(device_index, devices):
+            case Ok(device):
+                print("Resetting display...")
+                match device.reset_display():
+                    case Ok(resp):
+                        if not resp.is_ok():
+                            exit_with_error(f"Failed to reset display {resp.response}")
+                        else:
+                            print(resp.response)
+                    case Err(msg):
+                        exit_with_error(msg)
             case Err(msg):
                 exit_with_error(msg)
 

@@ -9,7 +9,8 @@ from result import Err, Result
 
 import freewili
 from freewili import usb_util
-from freewili.serial_util import FreeWiliSerial
+from freewili.framing import ResponseFrame
+from freewili.serial_util import FreeWiliSerial, IOMenuCommand
 from freewili.types import FreeWiliProcessorType
 from freewili.usb_util import USB_VID_FW_FTDI, USB_VID_FW_RPI, USBLocationInfo
 
@@ -20,6 +21,24 @@ FTDI_HUB_LOC_INDEX = 2
 DISPLAY_HUB_LOC_INDEX = 1
 # third address = Main
 MAIN_HUB_LOC_INDEX = 0
+
+# This maps the actual GPIO exposed on the connector, all others not
+# listed here are internal to the processor.
+GPIO_MAP = {
+    8: "GPIO8/UART1_Tx_OUT",
+    9: "GPIO9/UART1_Rx_IN",
+    10: "GPIO10/UART1_CTS_IN",
+    11: "GPIO11/UART1_RTS_OUT",
+    12: "GPIO12/SPI1_Rx_IN",
+    13: "GPIO13/SPI1_CS_OUT",
+    14: "GPIO14/SPI1_SCLK_OUT",
+    15: "GPIO15/SPI1_Tx_OUT",
+    16: "GPIO16/I2C0 SDA",
+    17: "GPIO17/I2C0 SCL",
+    25: "GPIO25/GPIO25_OUT",
+    26: "GPIO26/GPIO26_IN",
+    27: "GPIO27/GPIO_27_OUT",
+}
 
 
 @dataclass(frozen=True)
@@ -49,6 +68,7 @@ class FreeWili:
 
     def __init__(self, info: FreeWiliInfo):
         self.info = info
+        self._stay_open = False
 
     def __str__(self) -> str:
         return f"Free-Wili {self.info.serial_number}"
@@ -56,6 +76,8 @@ class FreeWili:
     def _get_processor(self, processor_type: FreeWiliProcessorType) -> FreeWiliProcessorInfo:
         for processor in self.info.processors:
             if processor.processor_type == processor_type:
+                if processor.serial_info:
+                    processor.serial_info.stay_open = self.stay_open
                 return processor
         raise IndexError(f"Processor {processor_type} not found for {self}")
 
@@ -73,6 +95,39 @@ class FreeWili:
     def display(self) -> FreeWiliProcessorInfo:
         """Get Display processor."""
         return self._get_processor(FreeWiliProcessorType.Display)
+
+    @property
+    def stay_open(self) -> bool:
+        """Keep serial port open, if True.
+
+        Returns:
+            bool
+        """
+        return self._stay_open
+
+    @stay_open.setter
+    def stay_open(self, value: bool) -> None:
+        self._stay_open = value
+
+    def close(self, restore_menu: bool = True) -> None:
+        """Close the serial port. Use in conjunction with stay_open.
+
+        Arguments:
+        ----------
+            restore_menu: bool
+                Restore the menu functionality before close
+
+        Returns:
+        -------
+            None
+        """
+        # Get the FreeWiliSerial and use it
+        serial_info = self._get_processor(FreeWiliProcessorType.Main).serial_info
+        if serial_info:
+            serial_info.close()
+        serial_info = self._get_processor(FreeWiliProcessorType.Display).serial_info
+        if serial_info:
+            serial_info.close()
 
     @classmethod
     def find_all(cls) -> tuple[Self, ...]:
@@ -196,30 +251,255 @@ class FreeWili:
             return Err(f"Serial info not available for {processor}")
         return serial_info.run_script(file_name)
 
+    def get_io(self, processor: FreeWiliProcessorType = FreeWiliProcessorType.Main) -> Result[tuple[int], str]:
+        """Get all the IO values.
+
+        Parameters:
+        ----------
+            processor: FreeWiliProcessorType
+                Processor to set IO on.
+
+        Returns:
+        -------
+            Result[tuple[int], str]:
+                Ok(tuple[int]) if the command was sent successfully, Err(str) if not.
+        """
+        # Get the FreeWiliSerial and use it
+        serial_info = self._get_processor(processor).serial_info
+        if not serial_info:
+            return Err(f"Serial info not available for {processor}")
+        return serial_info.get_io()
+
     def set_io(
-        self: Self, io: int, high: bool, processor: FreeWiliProcessorType = FreeWiliProcessorType.Main
-    ) -> Result[str, str]:
+        self: Self,
+        io: int,
+        menu_cmd: IOMenuCommand,
+        pwm_freq: None | int = None,
+        pwm_duty: None | int = None,
+        processor: FreeWiliProcessorType = FreeWiliProcessorType.Main,
+    ) -> Result[ResponseFrame, str]:
         """Set the state of an IO pin to high or low.
 
         Parameters:
         ----------
             io : int
                 The number of the IO pin to set.
-            high : bool
-                Whether to set the pin to high or low.
+            menu_cmd : IOMenuCommand
+                Whether to set the pin to high, low, toggle, or pwm.
+            pwm_freq: None | int
+                PWM frequency in Hertz
+            pwm_duty: None | int
+                PWM Duty cycle (0-100)
             processor: FreeWiliProcessorType
                 Processor to set IO on.
 
         Returns:
         -------
-            Result[str, str]:
-                Ok(str) if the command was sent successfully, Err(str) if not.
+            Result[ResponseFrame, str]:
+                Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
         """
         # Get the FreeWiliSerial and use it
         serial_info = self._get_processor(processor).serial_info
         if not serial_info:
             return Err(f"Serial info not available for {processor}")
-        return serial_info.set_io(io, high)
+        return serial_info.set_io(io, menu_cmd, pwm_freq, pwm_duty)
+
+    def set_board_leds(
+        self: Self,
+        io: int,
+        red: int,
+        green: int,
+        blue: int,
+        processor: FreeWiliProcessorType = FreeWiliProcessorType.Display,
+    ) -> Result[ResponseFrame, str]:
+        """Set the GUI RGB LEDs.
+
+        Parameters:
+        ----------
+            io : int
+                The number of the IO pin to set.
+            red : int
+                Red Color 0-255
+            green : int
+                Green Color 0-255
+            blue : int
+                Blue Color 0-255
+            processor: FreeWiliProcessorType
+                Processor to set LEDs on.
+
+        Returns:
+        -------
+            Result[ResponseFrame, str]:
+                Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
+        """
+        # k) GUI Functions
+        # s) Set Board LED [25 100 100 100]
+        # Get the FreeWiliSerial and use it
+        serial_info = self._get_processor(processor).serial_info
+        if not serial_info:
+            return Err(f"Serial info not available for {processor}")
+        return serial_info.set_board_leds(io, red, green, blue)
+
+    def read_i2c(
+        self, address: int, register: int, data_size: int, processor: FreeWiliProcessorType = FreeWiliProcessorType.Main
+    ) -> Result[ResponseFrame, str]:
+        """Write I2C data.
+
+        Parameters:
+        ----------
+            address : int
+                The address to write to.
+            register : int
+                The register to write to.
+            data_size : int
+                The number of bytes to read.
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        -------
+            Result[ResponseFrame, str]:
+                Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
+        """
+        # Get the FreeWiliSerial and use it
+        serial_info = self._get_processor(processor).serial_info
+        if not serial_info:
+            return Err(f"Serial info not available for {processor}")
+        return serial_info.read_i2c(address, register, data_size)
+
+    def write_i2c(
+        self, address: int, register: int, data: bytes, processor: FreeWiliProcessorType = FreeWiliProcessorType.Main
+    ) -> Result[ResponseFrame, str]:
+        """Write I2C data.
+
+        Parameters:
+        ----------
+            address : int
+                The address to write to.
+            register : int
+                The register to write to.
+            data : bytes
+                The data to write.
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        -------
+            Result[ResponseFrame, str]:
+                Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
+        """
+        # Get the FreeWiliSerial and use it
+        serial_info = self._get_processor(processor).serial_info
+        if not serial_info:
+            return Err(f"Serial info not available for {processor}")
+        return serial_info.write_i2c(address, register, data)
+
+    def poll_i2c(self, processor: FreeWiliProcessorType = FreeWiliProcessorType.Main) -> Result[ResponseFrame, str]:
+        """Write I2C data.
+
+        Parameters:
+        ----------
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        -------
+            Result[ResponseFrame, str]:
+                Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
+        """
+        # Get the FreeWiliSerial and use it
+        serial_info = self._get_processor(processor).serial_info
+        if not serial_info:
+            return Err(f"Serial info not available for {processor}")
+        return serial_info.poll_i2c()
+
+    def show_gui_image(
+        self, fwi_path: str, processor: FreeWiliProcessorType = FreeWiliProcessorType.Display
+    ) -> Result[ResponseFrame, str]:  # Result[Tuple[int, ...], str]:
+        """Show a fwi image on the display.
+
+        Arguments:
+        ----------
+            fwi_path: str
+                path to the fwi image
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        -------
+            Result[ResponseFrame, str]:
+                Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
+        """
+        # Get the FreeWiliSerial and use it
+        serial_info = self._get_processor(processor).serial_info
+        if not serial_info:
+            return Err(f"Serial info not available for {processor}")
+        return serial_info.show_gui_image(fwi_path)
+
+    def show_text_display(
+        self, text: str, processor: FreeWiliProcessorType = FreeWiliProcessorType.Display
+    ) -> Result[ResponseFrame, str]:  # Result[Tuple[int, ...], str]:
+        """Show text on the display.
+
+        Arguments:
+        ----------
+            text: str
+                text to display on screen.
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        -------
+            Result[ResponseFrame, str]:
+                Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
+        """
+        # Get the FreeWiliSerial and use it
+        serial_info = self._get_processor(processor).serial_info
+        if not serial_info:
+            return Err(f"Serial info not available for {processor}")
+        return serial_info.show_text_display(text)
+
+    def read_all_buttons(
+        self, processor: FreeWiliProcessorType = FreeWiliProcessorType.Display
+    ) -> Result[ResponseFrame, str]:  # Result[Tuple[int, ...], str]:
+        """Read all the buttons.
+
+        Arguments:
+        ----------
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        -------
+            Result[ResponseFrame, str]:
+                Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
+        """
+        # Get the FreeWiliSerial and use it
+        serial_info = self._get_processor(processor).serial_info
+        if not serial_info:
+            return Err(f"Serial info not available for {processor}")
+        return serial_info.read_all_buttons()
+
+    def reset_display(
+        self, processor: FreeWiliProcessorType = FreeWiliProcessorType.Display
+    ) -> Result[ResponseFrame, str]:  # Result[Tuple[int, ...], str]:
+        """Reset the display back to the main menu.
+
+        Arguments:
+        ----------
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        -------
+            Result[ResponseFrame, str]:
+                Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
+        """
+        # Get the FreeWiliSerial and use it
+        serial_info = self._get_processor(processor).serial_info
+        if not serial_info:
+            return Err(f"Serial info not available for {processor}")
+        return serial_info.reset_display()
 
 
 @dataclass(frozen=True)
@@ -261,7 +541,7 @@ class FileMap:
             "bit": (FreeWiliProcessorType.Main, "/fpga", "FPGA bit file"),
             "sub": (FreeWiliProcessorType.Display, "/radio", "Radio file"),
             "fwi": (FreeWiliProcessorType.Display, "/images", "Image file"),
-            "wav": (FreeWiliProcessorType.Display, "/audio", "Audio file"),
+            "wav": (FreeWiliProcessorType.Display, "/sounds", "Audio file"),
         }
         if ext not in mappings:
             raise ValueError(f"Extension '{ext}' is not a known FreeWili file type")

@@ -31,3 +31,14 @@ def test_file_mappings() -> None:
 
     assert FileMap.from_ext("wasm").to_path("test.wasm") == "/scripts/test.wasm"
     assert FileMap.from_ext("wasm").to_path("/some/random/path/test.wasm") == "/scripts/test.wasm"
+
+
+if __name__ == "__main__":
+    import pytest
+
+    pytest.main(
+        args=[
+            __file__,
+            "--verbose",
+        ]
+    )

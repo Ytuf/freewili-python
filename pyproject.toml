@@ -12,6 +12,7 @@ dependencies = [
     "pyftdi>=0.56.0",
     "pyusb>=1.3.1",
     "pyusb-chain>=0.2.7",
+    "numpy>=2.2.4",
 ]
 
 name = "freewili"

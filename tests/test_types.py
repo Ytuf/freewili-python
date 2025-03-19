@@ -11,3 +11,14 @@ def test_processor_type() -> None:
     assert FreeWiliProcessorType.DisplayUF2.value == 4
     assert FreeWiliProcessorType.FTDI.value == 5
     assert FreeWiliProcessorType.Unknown.value == 6
+
+
+if __name__ == "__main__":
+    import pytest
+
+    pytest.main(
+        args=[
+            __file__,
+            "--verbose",
+        ]
+    )

@@ -4,8 +4,8 @@ on:
   push:
 
 jobs:
-  run:
-    name: "Build and publish release"
+  build:
+    name: "Build"
     runs-on: ubuntu-latest
 
     steps:
@@ -30,8 +30,11 @@ jobs:
       - name: Build
         run: uv build --verbose
 
-      - name: Test
-        run: uv run pytest
+      - name: Tests
+        run: |
+          source .venv/bin/activate
+          uv sync --dev
+          uv run pytest --verbose
 
       - name: Documentation
         run: |
@@ -44,15 +47,6 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: doc/build/
-
-      - name: Publish
-        if: ${{ github.ref_name	 == 'master' }}
-        run: |
-          source .venv/bin/activate
-          uv sync --dev
-          check-wheel-contents dist/*.whl
-          twine upload -r testpypi -u __token__ -p ${{ secrets.PYPI_TEST_TOKEN }} --verbose dist/*
-          # uv publish --index testpypi -t ${{ secrets.PYPI_TEST_TOKEN }}
       
       - uses: actions/upload-artifact@v4
         with:
@@ -61,8 +55,46 @@ jobs:
             dist/
             doc/build/
   
-  # Deployment job
-  deploy:
+  deploy_pypi:
+    name: "Deploy PyPI"
+    runs-on: ubuntu-latest
+    needs: build
+    if: ${{ github.ref_name	 == 'master' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Set up Python
+        run: |
+          uv python install 3.10
+          uv venv -p 3.10
+          source .venv/bin/activate
+          uv sync
+          uv sync --dev
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: freewili-dist-${{ github.sha }}
+          path: dist/
+
+      - name: "Publish to PyPI"
+        run: |
+          source .venv/bin/activate
+          uv sync --dev
+          check-wheel-contents dist/*.whl
+          twine upload -r testpypi -u __token__ -p ${{ secrets.PYPI_TEST_TOKEN }} --verbose dist/*
+          # uv publish --index testpypi -t ${{ secrets.PYPI_TEST_TOKEN }}
+
+  deploy_documentation:
+    name: "Deploy Documentation"
+    if: ${{ github.ref_name	 == 'master' }}
     # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
     permissions:
       contents: read
@@ -72,9 +104,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    needs: run
+    needs: build
     steps:
-      - name: Deploy to GitHub Pages
+      - name: "Deploy to GitHub Pages"
         id: deployment
         uses: actions/deploy-pages@v4
-          

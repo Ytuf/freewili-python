@@ -1,5 +1,5 @@
-Serial Module
-================
+Serial Utility Module
+=====================
 API for interacting with a Free-Wili over serial.
 
 
@@ -9,17 +9,17 @@ Serial Examples
 .. code-block:: python
     :caption: Search for FreeWilis connected over USB
         
-        from freewili.serial import find_all
+        from freewili.serial_util import find_all
         from freewili.types import FreeWiliProcessorType
         
         # Find all main processors
-        devices = serial.find_all(FreeWiliProcessorType.Main)
+        devices = serial_util.find_all(FreeWiliProcessorType.Main)
         print(f"Found {len(devices)} Main FreeWili(s)")
         for device in devices:
             print(device)
 
         # Find all display processors
-        devices = serial.find_all(FreeWiliProcessorType.Display)
+        devices = serial_util.find_all(FreeWiliProcessorType.Display)
         print(f"Found {len(devices)} Display FreeWili(s)")
         for device in devices:
             print(device)
@@ -28,7 +28,7 @@ Serial Examples
 .. code-block:: python
     :caption: Send a file to the FreeWili
         
-        from freewili.serial import find_all
+        from freewili.serial_util import find_all
         from freewili.types import FreeWiliProcessorType
 
         # Find the first Main Processor.
@@ -39,7 +39,7 @@ Serial Examples
 .. code-block:: python
     :caption: Force main processor into UF2 bootloader
     
-        from freewili.serial import find_all
+        from freewili.serial_util import find_all
         from freewili.types import FreeWiliProcessorType
 
         # Find the first Main Processor.
@@ -58,7 +58,7 @@ Included in the freewili module is command line interfaces to allow easy interac
 
 Serial Module API
 -----------------
-.. automodule:: freewili.serial
+.. automodule:: freewili.serial_util
    :members:
    :show-inheritance:
    :undoc-members:
