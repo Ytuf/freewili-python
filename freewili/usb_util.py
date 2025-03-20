@@ -130,6 +130,7 @@ def find_all(vid: None | int = None, pid: None | int = None) -> tuple[USBLocatio
             # the correct number here
             usb_port_numbers = [usb_device.bus - 1]
             usb_port_numbers.extend(usb_device.port_numbers)
+            matched = False
             for device in win_devices:
                 data = device.export_data(True)[0]
                 loc_id = data[0]
@@ -142,6 +143,30 @@ def find_all(vid: None | int = None, pid: None | int = None) -> tuple[USBLocatio
                 if usb_port_numbers == port_numbers:
                     usb_device._serial_number = serial
                     usb_device._product = name
+                    matched = True
+                    break
+            if matched:
+                continue
+            # Lets do it again, we didn't match. don't decrement bus by one this time...
+            usb_port_numbers = [usb_device.bus]
+            usb_port_numbers.extend(usb_device.port_numbers)
+            matched = False
+            for device in win_devices:
+                data = device.export_data(True)[0]
+                loc_id = data[0]
+                port_numbers = [int(x) for x in loc_id.split("-")]
+                _com_port_name = data[1]
+                name = data[2]
+                serial = data[3]
+                _address = data[4]
+
+                if usb_port_numbers == port_numbers:
+                    usb_device._serial_number = serial
+                    usb_device._product = name
+                    matched = True
+                    break
+            if not matched:
+                raise RuntimeError("Failed to match device.")
     else:
         usb_devices = list(usb.core.find(**kwargs, find_all=True))
     devices: list[USBLocationInfo] = []
