@@ -318,6 +318,7 @@ dependencies = [
     { name = "pyftdi" },
     { name = "pyserial" },
     { name = "pyusb" },
+    { name = "pyusb-chain" },
     { name = "result" },
     { name = "typing-extensions" },
 ]
@@ -344,6 +345,7 @@ requires-dist = [
     { name = "pyftdi", specifier = ">=0.56.0" },
     { name = "pyserial", specifier = "==3.5" },
     { name = "pyusb", specifier = ">=1.3.1" },
+    { name = "pyusb-chain", specifier = ">=0.2.7" },
     { name = "result", git = "https://github.com/montasaurus/result" },
     { name = "typing-extensions", specifier = "==4.12.2" },
 ]
@@ -963,6 +965,18 @@ wheels = [
 ]
 
 [[package]]
+name = "pyusb-chain"
+version = "0.2.7"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "tabulate" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4d/a1/5d4b61fbb74f79cd4fe63a9af822911673b0a3c97d7e2d442179c6ade94a/pyusb-chain-0.2.7.tar.gz", hash = "sha256:814e779bcc66504801dc24faa43b4331fbc618598b9fca929681848a48f2759a", size = 459624 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/93/ac/269278390bd9e36cf0fd41dc50136c66c999a625c76f998f31a67b3cc5bc/pyusb_chain-0.2.7-py3-none-any.whl", hash = "sha256:94d4cf7550118cf37f239fac21ad2452279ddaf199e638bac673fd1c6be0fafc", size = 469497 },
+]
+
+[[package]]
 name = "pywin32-ctypes"
 version = "0.2.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1356,6 +1370,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/04/1b/52b27f2e13ceedc79a908e29eac426a63465a1a01248e5f24aa36a62aeb3/starlette-0.46.1.tar.gz", hash = "sha256:3c88d58ee4bd1bb807c0d1acb381838afc7752f9ddaec81bbe4383611d833230", size = 2580102 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a0/4b/528ccf7a982216885a1ff4908e886b8fb5f19862d1962f56a3fce2435a70/starlette-0.46.1-py3-none-any.whl", hash = "sha256:77c74ed9d2720138b25875133f3a2dae6d854af2ec37dceb56aef370c1d8a227", size = 71995 },
+]
+
+[[package]]
+name = "tabulate"
+version = "0.9.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ec/fe/802052aecb21e3797b8f7902564ab6ea0d60ff8ca23952079064155d1ae1/tabulate-0.9.0.tar.gz", hash = "sha256:0095b12bf5966de529c0feb1fa08671671b3368eec77d7ef7ab114be2c068b3c", size = 81090 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/40/44/4a5f08c96eb108af5cb50b41f76142f0afa346dfa99d5296fe7202a11854/tabulate-0.9.0-py3-none-any.whl", hash = "sha256:024ca478df22e9340661486f85298cff5f6dcdba14f3813e8830015b9ed1948f", size = 35252 },
 ]
 
 [[package]]

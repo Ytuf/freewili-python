@@ -13,7 +13,6 @@ else:
 import platform
 
 if platform.system().lower() == "windows":
-    import libusb_package  # type: ignore
     from pyusb_chain.usb_tree_view_tool import UsbTreeViewTool
 
 # FreeWili Black FTDI VendorID
@@ -60,14 +59,15 @@ class USBLocationInfo:
         """Create a USBLocationInfo based on libusb object."""
         # Get the serial number
         try:
+            dev._langids = (1033,)
             serial_number: str = dev.serial_number
-        except Exception as ex:
-            serial_number = str(ex)
+        except Exception as _ex:
+            serial_number = ""
         # Get the product name
         try:
             product: str = dev.product
-        except Exception as ex:
-            product = str(ex)
+        except Exception as _ex:
+            product = ""
         # Try to query the parent device
         try:
             parent = None
@@ -108,7 +108,7 @@ def find_all(vid: None | int = None, pid: None | int = None) -> tuple[USBLocatio
     if pid:
         kwargs["idProduct"] = pid
     if platform.system().lower() == "windows":
-        usb_devices = list(libusb_package.find(**kwargs, find_all=True))
+        usb_devices = list(usb.core.find(**kwargs, find_all=True))
         # libusb on windows doesn't support the serial so we are going to grab it from usbview
         # and directly modify the libusb class.
         UsbTreeViewTool()
@@ -128,7 +128,7 @@ def find_all(vid: None | int = None, pid: None | int = None) -> tuple[USBLocatio
         for usb_device in usb_devices:
             # for some reason the port_number seems wrong but the bus reflects
             # the correct number here
-            usb_port_numbers = [usb_device.bus]
+            usb_port_numbers = [usb_device.bus - 1]
             usb_port_numbers.extend(usb_device.port_numbers)
             for device in win_devices:
                 data = device.export_data(True)[0]
