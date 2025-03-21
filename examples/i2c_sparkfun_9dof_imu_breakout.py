@@ -7,6 +7,8 @@ MMC5983MA Magnetometer I2C Address: 0x30
 
 import enum
 
+from result import Err, Ok
+
 from freewili import FreeWili
 
 MMC5983MA_ADDR = 0x30
@@ -176,15 +178,15 @@ def get_mmc5983ma_magnetic_sensor(device: FreeWili) -> tuple[tuple[int, int, int
     return ((x, y, z), resp.timestamp)
 
 
-# find devices and use the first one
-print("Finding Free-Wilis...")
-devices = FreeWili.find_all()
-if not devices:
-    print("No FreeWili devices found!")
-    exit(1)
-device = devices[0]
-print(f"Using {device}")
-device.stay_open = True
+# find a FreeWili device
+match FreeWili.find_first():
+    case Ok(d):
+        device = d
+        device.stay_open = True
+        print(f"Using {device}")
+    case Err(msg):
+        print(msg)
+        exit(1)
 
 try:
     # Poll the I2C to make sure we can read the breakout board

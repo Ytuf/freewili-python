@@ -30,6 +30,24 @@ Toggles IO on the first Free-Wili device.
    :language: python
    :linenos:
 
+Read Buttons
+------------
+
+Read buttons on the first Free-Wili device.
+
+.. literalinclude:: ../../examples/read_buttons.py
+   :language: python
+   :linenos:
+
+Set Board LEDs
+--------------
+
+Set Board LEDs on the first Free-Wili device.
+
+.. literalinclude:: ../../examples/read_buttons.py
+   :language: python
+   :linenos:
+
 SparkFun 9DoF IMU Breakout - ISM330DHCX, MMC5983MA (Qwiic)
 ----------------------------------------------------------
 
@@ -38,4 +56,3 @@ SparkFun 9DoF IMU Breakout example over I2C.
 .. literalinclude:: ../../examples/i2c_sparkfun_9dof_imu_breakout.py
    :language: python
    :linenos:
-

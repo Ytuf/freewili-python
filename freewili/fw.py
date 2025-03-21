@@ -6,7 +6,7 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Self
 
-from result import Err, Result
+from result import Err, Ok, Result
 
 import freewili
 from freewili import usb_util
@@ -129,6 +129,31 @@ class FreeWili:
         serial_info = self._get_processor(FreeWiliProcessorType.Display).serial_info
         if serial_info:
             serial_info.close()
+
+    @classmethod
+    def find_first(cls) -> Result[Self, str]:
+        """Find first Free-Wili device attached to the host.
+
+        Parameters:
+        ----------
+            None
+
+        Returns:
+        -------
+            Result[FreeWili, str]:
+                Ok(FreeWili) if successful, Err(str) otherwise.
+
+        Raises:
+        -------
+            None
+        """
+        try:
+            devices = cls.find_all()
+            if not devices:
+                return Err("No FreeWili devices found!")
+            return Ok(devices[0])
+        except Exception as ex:
+            return Err(str(ex))
 
     @classmethod
     def find_all(cls) -> tuple[Self, ...]:
