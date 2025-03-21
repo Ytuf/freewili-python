@@ -13,6 +13,8 @@ else:
 import platform
 
 if platform.system().lower() == "windows":
+    import warnings
+    warnings.filterwarnings("ignore")
     from pyusb_chain.usb_tree_view_tool import UsbTreeViewTool
 
 # FreeWili Black FTDI VendorID
