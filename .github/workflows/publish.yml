@@ -82,15 +82,14 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: freewili-dist-${{ github.sha }}
-          path: dist/
+          path: freewili-dist/
 
       - name: "Publish to PyPI"
         run: |
           source .venv/bin/activate
           uv sync --dev
-          check-wheel-contents dist/*.whl
-          twine upload -r testpypi -u __token__ -p ${{ secrets.PYPI_TEST_TOKEN }} --verbose dist/*
-          # uv publish --index testpypi -t ${{ secrets.PYPI_TEST_TOKEN }}
+          check-wheel-contents freewili-dist/dist/*.whl
+          twine upload -r testpypi -u __token__ -p ${{ secrets.PYPI_TEST_TOKEN }} --verbose freewili-dist/dist/*
 
   deploy_documentation:
     name: "Deploy Documentation"
