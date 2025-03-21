@@ -3,6 +3,7 @@
 import pathlib
 from collections import OrderedDict
 from dataclasses import dataclass
+import platform
 from typing import Self
 
 from result import Err, Result
@@ -587,7 +588,10 @@ class FileMap:
                 If the extension isn't known.
         """
         fpath = pathlib.Path(file_name)
-        return str(pathlib.Path(self.directory) / fpath.name)
+        fpath = str(pathlib.Path(self.directory) / fpath.name)
+        if platform.system().lower() == "windows":
+            fpath = fpath.replace('\\', '/')
+        return fpath
 
 
 if __name__ == "__main__":
