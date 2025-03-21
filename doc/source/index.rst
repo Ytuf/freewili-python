@@ -1,11 +1,18 @@
-FreeWili documentation
-======================
+FreeWili
+========
 
-Python API to interact with Free-Wili devices. See https://freewili.com/ for more device information.
+.. image:: ../../logo.jpg
 
+Python API to interact with Free-Wili devices. 
+Included are two CLI executables to interact with a Free-Wili without writing any code. 
+`fwi-serial` for interacting with the Free-Wili and `fwi-convert` for converting png or jpg images to fwi format.
+
+See https://freewili.com/ for more device information.
+
+See https://github.com/freewili/freewili-python for source code.
 
 Installation
-============
+------------
 
 free-wili module requires Python 3.10 or newer and libusb installed for your platform.
 
@@ -15,12 +22,19 @@ free-wili module requires Python 3.10 or newer and libusb installed for your pla
       pip install freewili
 
 Windows
--------
+^^^^^^^
 
-Install libusb from https://libusb.info/ This must be in your system path (C:\windows\System32)
+- Install libusb from https://libusb.info/
+  
+  - This must be in your system path (C:\\windows\\System32)
+  
+  - libusb archive is in 7z format. Use https://7-zip.org/ to extract 
+
+
+.. image:: libusb-windows.png
 
 Linux
------
+^^^^^
 
 Install libusb using your package manager.
 
@@ -30,7 +44,7 @@ Install libusb using your package manager.
       apt install libusb
 
 MacOS
------
+^^^^^
 
 Install libusb using brew
 
@@ -40,7 +54,7 @@ Install libusb using brew
       brew install libusb
 
 Contents
-========
+--------
 .. toctree::
    :maxdepth: 3
 

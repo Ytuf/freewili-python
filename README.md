@@ -10,6 +10,8 @@ You can install freewili using pip by running the following command (Python 3.10
 pip install freewili
 ```
 
+Please visit https://freewili.github.io/freewili-python/index.html#installation for platform specific installation notes.
+
 ## Documentation
 
 Documentation on how to use the API, development environment setup, and code examples can be found here:
