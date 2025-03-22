@@ -136,7 +136,11 @@ def find_all(vid: None | int = None, pid: None | int = None) -> tuple[USBLocatio
             for device in win_devices:
                 data = device.export_data(True)[0]
                 loc_id = data[0]
-                port_numbers = [int(x) for x in loc_id.split("-")]
+                try:
+                    port_numbers = [int(x) for x in loc_id.split("-")]
+                except ValueError:
+                    # Some devices are reporting strange values like 7:Microphone here...
+                    continue
                 _com_port_name = data[1]
                 name = data[2]
                 serial = data[3]
