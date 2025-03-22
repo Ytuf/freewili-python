@@ -44,7 +44,7 @@ Set Board LEDs
 
 Set Board LEDs on the first Free-Wili device.
 
-.. literalinclude:: ../../examples/read_buttons.py
+.. literalinclude:: ../../examples/set_board_leds.py
    :language: python
    :linenos:
 
