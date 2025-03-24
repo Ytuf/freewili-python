@@ -24,14 +24,7 @@ free-wili module requires Python 3.10 or newer and libusb installed for your pla
 Windows
 ^^^^^^^
 
-- Install libusb from https://libusb.info/
-  
-  - This must be in your system path (C:\\windows\\System32)
-  
-  - libusb archive is in 7z format. Use https://7-zip.org/ to extract 
-
-
-.. image:: libusb-windows.png
+As of 0.0.23, libusb1 python package provides libusb-1.0.dll, nothing more should be needed.
 
 Linux
 ^^^^^
@@ -41,7 +34,10 @@ Install libusb using your package manager.
 .. code-block:: bash
     :caption: Ubuntu/Debian libusb
 
-      apt install libusb
+      apt install libusb-1.0
+
+
+Please see https://pkgs.org/search/?q=libusb for a list of packages on other distributions. Double check you are installing libusb-1.0 and not libusb-0.1
 
 MacOS
 ^^^^^

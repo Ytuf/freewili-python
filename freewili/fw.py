@@ -18,7 +18,15 @@ from freewili import usb_util
 from freewili.framing import ResponseFrame
 from freewili.serial_util import FreeWiliSerial, IOMenuCommand
 from freewili.types import FreeWiliProcessorType
-from freewili.usb_util import USB_VID_FW_FTDI, USB_VID_FW_RPI, USBLocationInfo
+from freewili.usb_util import (
+    USB_PID_FW_FTDI,
+    USB_PID_FW_HUB,
+    USB_PID_FW_RPI_UF2_PID,
+    USB_VID_FW_FTDI,
+    USB_VID_FW_HUB,
+    USB_VID_FW_RPI,
+    USBLocationInfo,
+)
 
 # USB Locations:
 # first address = FTDI
@@ -177,30 +185,28 @@ class FreeWili:
         -------
             None
         """
-        all_usb = usb_util.find_all(vid=USB_VID_FW_FTDI) + usb_util.find_all(vid=USB_VID_FW_RPI)
-        # sort by bus
-        usb_buses = OrderedDict({})
-        for usb_dev in all_usb:
-            if usb_dev.bus not in usb_buses:
-                usb_buses[usb_dev.bus] = [
-                    usb_dev,
-                ]
-            else:
-                bus = usb_buses[usb_dev.bus]
-                bus.append(usb_dev)
-                # Sort all the addresses
-                bus = sorted(bus, key=lambda x: x.address)
-                usb_buses[usb_dev.bus] = bus
-        # Sort all the bus numbers
-        usb_buses = OrderedDict(sorted(usb_buses.items()))
-        # get all the serial ports
-        serial_ports = freewili.serial_util.find_all()
+        hubs = usb_util.find_all(USB_VID_FW_HUB, USB_PID_FW_HUB, False)
+        if not hubs:
+            # no hubs found
+            return ()
+        # Find all devices we should have on the hub
+        all_usb = usb_util.find_all(USB_VID_FW_FTDI, USB_PID_FW_FTDI) + usb_util.find_all(USB_VID_FW_RPI, None)
+        fw_hubs = []
+        for hub in hubs:
+            usb_devices = OrderedDict({})
+            for usb in all_usb:
+                if usb.parent != hub:
+                    continue
+                usb_devices[usb.port_number] = usb
+            fw_hubs.append(usb_devices)
 
+        serial_ports = freewili.serial_util.find_all()
         freewilis = []
-        for _bus, usb_devices in usb_buses.items():
-            ftdi_usb: USBLocationInfo = usb_devices[FTDI_HUB_LOC_INDEX]
-            main_usb: USBLocationInfo = usb_devices[MAIN_HUB_LOC_INDEX]
-            display_usb: USBLocationInfo = usb_devices[DISPLAY_HUB_LOC_INDEX]
+        for fw_hub in fw_hubs:
+            indexes = sorted(fw_hub.keys())
+            main_usb: USBLocationInfo = fw_hub[indexes[MAIN_HUB_LOC_INDEX]]
+            display_usb: USBLocationInfo = fw_hub[indexes[DISPLAY_HUB_LOC_INDEX]]
+            ftdi_usb: USBLocationInfo = fw_hub[indexes[FTDI_HUB_LOC_INDEX]]
             # match up the serial port to the USB device
             ftdi_serial = None
             main_serial = None
@@ -215,10 +221,19 @@ class FreeWili:
                 if display_usb.serial == serial_port.info.serial:
                     serial_port.info.fw_serial = ftdi_usb.serial
                     display_serial = serial_port
+            # Get main processor based on PID
+            main_processor_type = FreeWiliProcessorType.Main
+            if main_usb.vendor_id == USB_PID_FW_RPI_UF2_PID:
+                main_processor_type = FreeWiliProcessorType.MainUF2
+            # Get display processor based on PID
+            display_processor_type = FreeWiliProcessorType.Display
+            if display_usb.vendor_id == USB_PID_FW_RPI_UF2_PID:
+                display_processor_type = FreeWiliProcessorType.DisplayUF2
+
             processors = (
                 FreeWiliProcessorInfo(FreeWiliProcessorType.FTDI, ftdi_usb, ftdi_serial),
-                FreeWiliProcessorInfo(FreeWiliProcessorType.Main, main_usb, main_serial),
-                FreeWiliProcessorInfo(FreeWiliProcessorType.Display, display_usb, display_serial),
+                FreeWiliProcessorInfo(main_processor_type, main_usb, main_serial),
+                FreeWiliProcessorInfo(display_processor_type, display_usb, display_serial),
             )
             serial: str = ftdi_usb.serial if ftdi_usb.serial else "None"
             freewilis.append(FreeWili(FreeWiliInfo(serial, processors)))

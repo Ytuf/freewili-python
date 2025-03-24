@@ -1,5 +1,6 @@
 """USB helper functions to interface with a Free-Wili."""
 
+import pathlib
 import sys
 from dataclasses import dataclass
 
@@ -14,8 +15,16 @@ import platform
 
 if platform.system().lower() == "windows":
     import warnings
+
     warnings.filterwarnings("ignore")
+    import usb.backend.libusb1
+    import usb1
     from pyusb_chain.usb_tree_view_tool import UsbTreeViewTool
+
+# FreeWili USB Hub Vendor ID.
+USB_VID_FW_HUB: int = 0x0424
+# FreeWili USB Hub Product ID.
+USB_PID_FW_HUB: int = 0x2513
 
 # FreeWili Black FTDI VendorID
 USB_VID_FW_FTDI: int = 0x0403
@@ -42,6 +51,10 @@ class USBLocationInfo:
     bus: int
     # USB address location
     address: int
+    # USB port number
+    port_number: int
+    # USB port numbers
+    port_numbers: int
     # USB product name
     name: None | str
     # USB serial number
@@ -53,7 +66,7 @@ class USBLocationInfo:
         return (
             f"{self.name} {self.serial} "
             f"[{self.vendor_id:#04x}:{self.product_id:#04x}]"
-            f"[{self.bus}:{self.address}]"
+            f"[{self.bus}:{self.address}:{self.port_numbers}:{self.port_number}]"
         )
 
     @classmethod
@@ -79,11 +92,21 @@ class USBLocationInfo:
             print(f"Exception: from_lubusb(): {ex}")
             parent = None
         # Create our USBLocationInfo
-        usb_location_info = cls(dev.idVendor, dev.idProduct, dev.bus, dev.address, product, serial_number, parent)
+        usb_location_info = cls(
+            dev.idVendor,
+            dev.idProduct,
+            dev.bus,
+            dev.address,
+            dev.port_number,
+            dev.port_numbers,
+            product,
+            serial_number,
+            parent,
+        )
         return usb_location_info
 
 
-def find_all(vid: None | int = None, pid: None | int = None) -> tuple[USBLocationInfo, ...]:
+def find_all(vid: None | int = None, pid: None | int = None, no_match_raises: bool = True) -> tuple[USBLocationInfo, ...]:
     """Find all USB devices attached to Host from a given USB VID and PID.
 
     Parameters:
@@ -92,6 +115,9 @@ def find_all(vid: None | int = None, pid: None | int = None) -> tuple[USBLocatio
             USB Vendor ID to search for
         pid: None | int
             USB Product ID to search for
+        no_match_raises: bool
+            If we can't find a match on windows to USBView, raise an exception.
+            This is needed for matching serial numbers and the name.
 
     Returns:
     -------
@@ -110,7 +136,12 @@ def find_all(vid: None | int = None, pid: None | int = None) -> tuple[USBLocatio
     if pid:
         kwargs["idProduct"] = pid
     if platform.system().lower() == "windows":
-        usb_devices = list(usb.core.find(**kwargs, find_all=True))
+        usb1_location = pathlib.Path(usb1.__file__).parent / "libusb-1.0.dll"
+        backend = usb.backend.libusb1.get_backend(find_library=lambda x: usb1_location)
+        try:
+            usb_devices = list(usb.core.find(**kwargs, find_all=True, backend=backend))
+        except usb.core.NoBackendError as ex:
+            raise usb.core.NoBackendError(f"Failed to load libusb, is it installed? {ex}") from ex
         # libusb on windows doesn't support the serial so we are going to grab it from usbview
         # and directly modify the libusb class.
         UsbTreeViewTool()
@@ -130,14 +161,12 @@ def find_all(vid: None | int = None, pid: None | int = None) -> tuple[USBLocatio
         for usb_device in usb_devices:
             # for some reason the port_number seems wrong but the bus reflects
             # the correct number here
-            usb_port_numbers = [usb_device.bus - 1]
-            usb_port_numbers.extend(usb_device.port_numbers)
             matched = False
             for device in win_devices:
                 data = device.export_data(True)[0]
                 loc_id = data[0]
                 try:
-                    port_numbers = [int(x) for x in loc_id.split("-")]
+                    win_port_numbers = tuple([int(x.split(":")[0]) for x in loc_id.split("-")])
                 except ValueError:
                     # Some devices are reporting strange values like 7:Microphone here...
                     continue
@@ -145,33 +174,15 @@ def find_all(vid: None | int = None, pid: None | int = None) -> tuple[USBLocatio
                 name = data[2]
                 serial = data[3]
                 _address = data[4]
-
-                if usb_port_numbers == port_numbers:
+                usb_pn_len = len(usb_device.port_numbers)
+                win_pn_len = len(win_port_numbers)
+                len_diff = win_pn_len - usb_pn_len
+                if win_port_numbers[len_diff:] == usb_device.port_numbers:
                     usb_device._serial_number = serial
                     usb_device._product = name
                     matched = True
                     break
-            if matched:
-                continue
-            # Lets do it again, we didn't match. don't decrement bus by one this time...
-            usb_port_numbers = [usb_device.bus]
-            usb_port_numbers.extend(usb_device.port_numbers)
-            matched = False
-            for device in win_devices:
-                data = device.export_data(True)[0]
-                loc_id = data[0]
-                port_numbers = [int(x) for x in loc_id.split("-")]
-                _com_port_name = data[1]
-                name = data[2]
-                serial = data[3]
-                _address = data[4]
-
-                if usb_port_numbers == port_numbers:
-                    usb_device._serial_number = serial
-                    usb_device._product = name
-                    matched = True
-                    break
-            if not matched:
+            if not matched and no_match_raises:
                 raise RuntimeError("Failed to match device.")
     else:
         usb_devices = list(usb.core.find(**kwargs, find_all=True))
@@ -188,3 +199,18 @@ if __name__ == "__main__":
     fw_devices = find_all(vid=USB_VID_FW_RPI)
     for dev in fw_devices:
         print(dev)
+
+# def main():
+#     import usb1
+#     with usb1.USBContext() as context:
+#         for device in context.getDeviceIterator(skip_on_error=True):
+#             # if device.getVendorID() != USB_VID_FW_HUB or device.getProductID() != USB_PID_FW_HUB:
+#             #     continue
+#             # print(device.getNumConfigurations())
+#             if (device.getBusNumber() != 2):
+#                 continue
+#             print('ID %04x:%04x' % (device.getVendorID(), device.getProductID()), '->'.join(str(x) for x in ['Bus %03i' % (device.getBusNumber(), )] + device.getPortNumberList()), 'Device', device.getDeviceAddress())
+
+
+# if __name__ == '__main__':
+#     main()
