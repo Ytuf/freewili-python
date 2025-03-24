@@ -141,6 +141,7 @@ def find_all(vid: None | int = None, pid: None | int = None, no_match_raises: bo
         try:
             usb_devices = list(usb.core.find(**kwargs, find_all=True, backend=backend))
         except usb.core.NoBackendError as ex:
+            print(f"usb1_location: {usb1_location}")
             raise usb.core.NoBackendError(f"Failed to load libusb, is it installed? {ex}") from ex
         # libusb on windows doesn't support the serial so we are going to grab it from usbview
         # and directly modify the libusb class.
