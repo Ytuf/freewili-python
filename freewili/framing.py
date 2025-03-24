@@ -1,8 +1,13 @@
 """Support for FreeWili serial framing."""
 
 import enum
+import sys
 from dataclasses import dataclass
-from typing import Self
+
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
 
 import numpy as np
 from result import Err, Ok, Result

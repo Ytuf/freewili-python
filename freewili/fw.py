@@ -2,9 +2,14 @@
 
 import pathlib
 import platform
+import sys
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Self
+
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
 
 from result import Err, Ok, Result
 
