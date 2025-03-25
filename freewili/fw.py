@@ -87,6 +87,9 @@ class FreeWili:
     def __str__(self) -> str:
         return f"Free-Wili {self.info.serial_number}"
 
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__}: {self.info.serial_number}>"
+
     def _get_processor(self, processor_type: FreeWiliProcessorType) -> FreeWiliProcessorInfo:
         for processor in self.info.processors:
             if processor.processor_type == processor_type:
@@ -185,12 +188,14 @@ class FreeWili:
         -------
             None
         """
-        hubs = usb_util.find_all(USB_VID_FW_HUB, USB_PID_FW_HUB, False)
+        hubs = usb_util.find_all(USB_VID_FW_HUB, USB_PID_FW_HUB, False, True)
         if not hubs:
             # no hubs found
             return ()
         # Find all devices we should have on the hub
-        all_usb = usb_util.find_all(USB_VID_FW_FTDI, USB_PID_FW_FTDI) + usb_util.find_all(USB_VID_FW_RPI, None)
+        all_usb = usb_util.find_all(USB_VID_FW_FTDI, USB_PID_FW_FTDI, True, False) + usb_util.find_all(
+            USB_VID_FW_RPI, None, True, False
+        )
         fw_hubs = []
         for hub in hubs:
             usb_devices = OrderedDict({})

@@ -106,7 +106,13 @@ class USBLocationInfo:
         return usb_location_info
 
 
-def find_all(vid: None | int = None, pid: None | int = None, no_match_raises: bool = True) -> tuple[USBLocationInfo, ...]:
+if platform.system().lower() == "windows":
+    usb_tree_tool = UsbTreeViewTool()
+
+
+def find_all(
+    vid: None | int = None, pid: None | int = None, no_match_raises: bool = True, scan: bool = True
+) -> tuple[USBLocationInfo, ...]:
     """Find all USB devices attached to Host from a given USB VID and PID.
 
     Parameters:
@@ -118,6 +124,8 @@ def find_all(vid: None | int = None, pid: None | int = None, no_match_raises: bo
         no_match_raises: bool
             If we can't find a match on windows to USBView, raise an exception.
             This is needed for matching serial numbers and the name.
+        scan: bool
+            Windows only. Scan UsbTreeView.
 
     Returns:
     -------
@@ -145,10 +153,9 @@ def find_all(vid: None | int = None, pid: None | int = None, no_match_raises: bo
             raise usb.core.NoBackendError(f"Failed to load libusb, is it installed? {ex}") from ex
         # libusb on windows doesn't support the serial so we are going to grab it from usbview
         # and directly modify the libusb class.
-        UsbTreeViewTool()
-        tool = UsbTreeViewTool()
-        tool.scan()
-        win_devices = tool.filter(None)
+        if scan:
+            usb_tree_tool.scan()
+        win_devices = usb_tree_tool.filter(None)
         # ['1-1', '', 'USB Composite Device - 2× Camera', None, 11]
         # ['2-1-1', 'COM6', 'USB Composite Device - COM6', 'E463A8574B103A35', 19]
         # ['2-1-2', 'COM5', 'USB Composite Device - COM5', 'E463A8574B423835', 20]
@@ -200,18 +207,3 @@ if __name__ == "__main__":
     fw_devices = find_all(vid=USB_VID_FW_RPI)
     for dev in fw_devices:
         print(dev)
-
-# def main():
-#     import usb1
-#     with usb1.USBContext() as context:
-#         for device in context.getDeviceIterator(skip_on_error=True):
-#             # if device.getVendorID() != USB_VID_FW_HUB or device.getProductID() != USB_PID_FW_HUB:
-#             #     continue
-#             # print(device.getNumConfigurations())
-#             if (device.getBusNumber() != 2):
-#                 continue
-#             print('ID %04x:%04x' % (device.getVendorID(), device.getProductID()), '->'.join(str(x) for x in ['Bus %03i' % (device.getBusNumber(), )] + device.getPortNumberList()), 'Device', device.getDeviceAddress())
-
-
-# if __name__ == '__main__':
-#     main()
