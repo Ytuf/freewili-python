@@ -27,19 +27,34 @@ from result import Err, Ok, Result
 from freewili.types import FreeWiliProcessorType
 
 
-class IOMenuCommand(enum.StrEnum):
+class IOMenuCommand(enum.Enum):
     """Free-Wili IO menu representation."""
 
-    High = "s"
-    Low = "l"
-    Toggle = "t"
-    Pwm = "p"
-    Stream = "o"
-    Get = "u"
+    High = enum.auto()
+    Low = enum.auto()
+    Toggle = enum.auto()
+    Pwm = enum.auto()
+    Stream = enum.auto()
+    Get = enum.auto()
 
     @classmethod
     def from_string(cls, value: str) -> Self:
-        """Convert a string value to an IOMenuCommand."""
+        """Convert a string value to an IOMenuCommand.
+
+        Arguments:
+        ----------
+            value: str
+                string value to convert to an enum. Case Insensitive.
+
+        Returns:
+        --------
+            str:
+                FreeWili menu command character.
+
+        Raises:
+            ValueError:
+                When invalid enum isn't matched against provided string value.
+        """
         match value.lower():
             case "high":
                 return cls(cls.High)
@@ -49,7 +64,39 @@ class IOMenuCommand(enum.StrEnum):
                 return cls(cls.Toggle)
             case "pwm":
                 return cls(cls.Pwm)
-        raise ValueError(f"'{value}' is not a value IOMenuCommand")
+        raise ValueError(f"'{value}' is not a valid IOMenuCommand")
+
+    @property
+    def menu_character(self) -> str:
+        """Convert IOMenuCommand to a FreeWili menu command character.
+
+        Arguments:
+        ----------
+            None
+
+        Returns:
+        --------
+            str:
+                FreeWili menu command character.
+
+        Raises:
+            ValueError:
+                When invalid enum isn't found.
+        """
+        match self:
+            case self.High:
+                return "s"
+            case self.Low:
+                return "l"
+            case self.Toggle:
+                return "t"
+            case self.Pwm:
+                return "p"
+            case self.Stream:
+                return "o"
+            case self.Get:
+                return "u"
+        raise ValueError(f"{self.name} ({self.value}) is not a supported menu command")
 
 
 @dataclasses.dataclass
@@ -274,17 +321,17 @@ class FreeWiliSerial:
         # u) Get All IOs (hex)
         match menu_cmd:
             case IOMenuCommand.High:
-                cmd = f"o\n{menu_cmd.value}\n{io}\n"
+                cmd = f"o\n{menu_cmd.menu_character}\n{io}\n"
             case IOMenuCommand.Low:
-                cmd = f"o\n{menu_cmd.value}\n{io}\n"
+                cmd = f"o\n{menu_cmd.menu_character}\n{io}\n"
             case IOMenuCommand.Toggle:
-                cmd = f"o\n{menu_cmd.value}\n{io}\n"
+                cmd = f"o\n{menu_cmd.menu_character}\n{io}\n"
             case IOMenuCommand.Pwm:
                 if pwm_freq == -1 or pwm_duty == -1:
                     return Err("pwm_freq and pwm_duty args need to be specified")
-                cmd = f"o\n{menu_cmd.value}\n{io} {pwm_freq} {pwm_duty}\n"
+                cmd = f"o\n{menu_cmd.menu_character}\n{io} {pwm_freq} {pwm_duty}\n"
             case IOMenuCommand.Toggle:
-                cmd = f"o\n{menu_cmd.value}\n{io}\n"
+                cmd = f"o\n{menu_cmd.menu_character}\n{io}\n"
             case _:
                 return Err(f"{menu_cmd.name} is not supported.")
 
