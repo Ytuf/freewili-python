@@ -60,7 +60,7 @@ class FreeWiliProcessorInfo:
     """Processor USB and Serial Port info of the Free-Wili."""
 
     processor_type: FreeWiliProcessorType
-    usb_info: USBLocationInfo
+    usb_info: None | USBLocationInfo
     serial_info: None | FreeWiliSerial
 
     def __str__(self) -> str:
@@ -99,19 +99,28 @@ class FreeWili:
         raise IndexError(f"Processor {processor_type} not found for {self}")
 
     @property
-    def ftdi(self) -> FreeWiliProcessorInfo:
+    def ftdi(self) -> None | FreeWiliProcessorInfo:
         """Get FTDI processor."""
-        return self._get_processor(FreeWiliProcessorType.FTDI)
+        try:
+            return self._get_processor(FreeWiliProcessorType.FTDI)
+        except IndexError:
+            return None
 
     @property
-    def main(self) -> FreeWiliProcessorInfo:
+    def main(self) -> None | FreeWiliProcessorInfo:
         """Get Main processor."""
-        return self._get_processor(FreeWiliProcessorType.Main)
+        try:
+            return self._get_processor(FreeWiliProcessorType.Main)
+        except IndexError:
+                return None
 
     @property
-    def display(self) -> FreeWiliProcessorInfo:
+    def display(self) -> None | FreeWiliProcessorInfo:
         """Get Display processor."""
-        return self._get_processor(FreeWiliProcessorType.Display)
+        try:
+            return self._get_processor(FreeWiliProcessorType.Display)
+        except IndexError:
+            return None
 
     @property
     def stay_open(self) -> bool:
@@ -210,41 +219,53 @@ class FreeWili:
         for fw_hub in fw_hubs:
             indexes = sorted(fw_hub.keys())
             try:
-                main_usb: USBLocationInfo = fw_hub[indexes[MAIN_HUB_LOC_INDEX]]
-                display_usb: USBLocationInfo = fw_hub[indexes[DISPLAY_HUB_LOC_INDEX]]
-                ftdi_usb: USBLocationInfo = fw_hub[indexes[FTDI_HUB_LOC_INDEX]]
-            except IndexError as ex:
-                print(ex)
-                continue
+                main_usb: None | USBLocationInfo = fw_hub[indexes[MAIN_HUB_LOC_INDEX]]
+            except IndexError:
+                main_usb = None
+            try:
+                display_usb: None | USBLocationInfo = fw_hub[indexes[DISPLAY_HUB_LOC_INDEX]]
+            except IndexError:
+                display_usb = None
+            try:
+                ftdi_usb: None | USBLocationInfo = fw_hub[indexes[FTDI_HUB_LOC_INDEX]]
+            except IndexError:
+                ftdi_usb = None
+
             # match up the serial port to the USB device
             ftdi_serial = None
             main_serial = None
             display_serial = None
             for serial_port in serial_ports:
                 # Windows likes to append letters to the end of the serial numbers...
-                if serial_port.info.serial.startswith(ftdi_usb.serial):
+                if ftdi_usb and serial_port.info.serial.startswith(ftdi_usb.serial):
                     ftdi_serial = serial_port
-                if main_usb.serial == serial_port.info.serial:
-                    serial_port.info.fw_serial = ftdi_usb.serial
+                if main_usb and main_usb.serial == serial_port.info.serial:
+                    serial_port.info.fw_serial = ftdi_usb.serial if ftdi_usb else None
                     main_serial = serial_port
-                if display_usb.serial == serial_port.info.serial:
-                    serial_port.info.fw_serial = ftdi_usb.serial
+                if display_usb and display_usb.serial == serial_port.info.serial:
+                    serial_port.info.fw_serial = ftdi_usb.serial if ftdi_usb else None
                     display_serial = serial_port
             # Get main processor based on PID
             main_processor_type = FreeWiliProcessorType.Main
-            if main_usb.vendor_id == USB_PID_FW_RPI_UF2_PID:
+            if main_usb and main_usb.vendor_id == USB_PID_FW_RPI_UF2_PID:
                 main_processor_type = FreeWiliProcessorType.MainUF2
+            elif main_usb is None:
+                main_processor_type = FreeWiliProcessorType.Unknown
             # Get display processor based on PID
             display_processor_type = FreeWiliProcessorType.Display
-            if display_usb.vendor_id == USB_PID_FW_RPI_UF2_PID:
+            if display_usb and display_usb.vendor_id == USB_PID_FW_RPI_UF2_PID:
                 display_processor_type = FreeWiliProcessorType.DisplayUF2
+            elif display_usb is None:
+                display_processor_type = FreeWiliProcessorType.Unknown
 
             processors = (
                 FreeWiliProcessorInfo(FreeWiliProcessorType.FTDI, ftdi_usb, ftdi_serial),
                 FreeWiliProcessorInfo(main_processor_type, main_usb, main_serial),
                 FreeWiliProcessorInfo(display_processor_type, display_usb, display_serial),
             )
-            serial: str = ftdi_usb.serial if ftdi_usb.serial else "None"
+            serial = "None"
+            if ftdi_usb and ftdi_usb.serial:
+                serial = ftdi_usb.serial
             freewilis.append(FreeWili(FreeWiliInfo(serial, processors)))
         return tuple(freewilis)  # type: ignore
 
