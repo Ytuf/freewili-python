@@ -209,9 +209,13 @@ class FreeWili:
         freewilis = []
         for fw_hub in fw_hubs:
             indexes = sorted(fw_hub.keys())
-            main_usb: USBLocationInfo = fw_hub[indexes[MAIN_HUB_LOC_INDEX]]
-            display_usb: USBLocationInfo = fw_hub[indexes[DISPLAY_HUB_LOC_INDEX]]
-            ftdi_usb: USBLocationInfo = fw_hub[indexes[FTDI_HUB_LOC_INDEX]]
+            try:
+                main_usb: USBLocationInfo = fw_hub[indexes[MAIN_HUB_LOC_INDEX]]
+                display_usb: USBLocationInfo = fw_hub[indexes[DISPLAY_HUB_LOC_INDEX]]
+                ftdi_usb: USBLocationInfo = fw_hub[indexes[FTDI_HUB_LOC_INDEX]]
+            except IndexError as ex:
+                print(ex)
+                continue
             # match up the serial port to the USB device
             ftdi_serial = None
             main_serial = None
