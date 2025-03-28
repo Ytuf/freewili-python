@@ -392,7 +392,7 @@ class FreeWiliSerial:
         """
         self._serial.reset_input_buffer()
         self._serial.reset_output_buffer()
-        cmd = f"o\n{IOMenuCommand.Get.value}\n"
+        cmd = f"o\n{IOMenuCommand.Get.menu_character}\n"
         match self._write_serial(cmd.encode("ascii"), 0.1):
             case Ok(_):
                 resp = self._wait_for_response_frame()
