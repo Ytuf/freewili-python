@@ -853,14 +853,20 @@ class FreeWiliSerial:
         #     return Err("Unknown processor type detected!")
         line = ""
         for line in data.decode().splitlines():
-            if "Processor" in line:
+            if "Processor" in line or "MainCPU" in line or "DisplayCPU" in line:
                 break
         proc_type_regex = re.compile(r"(?:Main|Display)|(?:App version)|(?:\d+)")
         results = proc_type_regex.findall(line)
-        if len(results) != 3:
+        if len(results) == 2:
+            # New firmware >= 48
+            processor = results[0]
+            version = results[1]
+        elif len(results) == 3:
+            # Legacy firmware
+            processor = results[0]
+            version = results[2]
+        else:
             return Ok(FreeWiliAppInfo(FreeWiliProcessorType.Unknown, 0))
-        processor = results[0]
-        version = results[2]
         if "Main" in processor:
             return Ok(FreeWiliAppInfo(FreeWiliProcessorType.Main, int(version)))
         elif "Display" in processor:

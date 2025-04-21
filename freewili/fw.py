@@ -52,8 +52,8 @@ class FreeWili:
         self.device = device
         self._stay_open = False
 
-        self._main_serial: None | FreeWiliSerial = None  # FreeWiliSerial(self.main.port, self._stay_open)
-        self._display_serial: None | FreeWiliSerial = None  # FreeWiliSerial(self.display.port, self._stay_open)
+        self._main_serial: None | FreeWiliSerial = None
+        self._display_serial: None | FreeWiliSerial = None
 
     def __str__(self) -> str:
         return f"Free-Wili {self.device.serial}"
@@ -105,11 +105,9 @@ class FreeWili:
         match processor_type:
             case FreeWiliProcessorType.Main:
                 device = self.usb_devices[0]
-                assert device.kind == fwf.USBDeviceType.Serial
                 return device
             case FreeWiliProcessorType.Display:
                 device = self.usb_devices[1]
-                assert device.kind == fwf.USBDeviceType.Serial
                 return self.usb_devices[1]
         return None
 
@@ -129,6 +127,11 @@ class FreeWili:
         return self.get_usb_device(FreeWiliProcessorType.Display)
 
     @property
+    def esp32(self) -> None | fwf.USBDevice:
+        """Get Display processor."""
+        return self.get_usb_device(FreeWiliProcessorType.ESP32)
+
+    @property
     def main_serial(self) -> None | FreeWiliSerial:
         """Get Main FreeWiliSerial.
 
@@ -143,6 +146,8 @@ class FreeWili:
         """
         if not self._main_serial and self.main and self.main.port:
             self._main_serial = FreeWiliSerial(self.main.port, self._stay_open)
+        if self._main_serial:
+            self._main_serial.stay_open = self._stay_open
         return self._main_serial
 
     @property
@@ -160,6 +165,8 @@ class FreeWili:
         """
         if not self._display_serial and self.display and self.display.port:
             self._display_serial = FreeWiliSerial(self.display.port, self._stay_open)
+        if self._display_serial:
+            self._display_serial.stay_open = self._stay_open
         return self._display_serial
 
     def get_serial_from(self, processor_type: FreeWiliProcessorType) -> Result[FreeWiliSerial, str]:

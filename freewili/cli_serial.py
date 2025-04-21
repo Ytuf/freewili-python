@@ -7,12 +7,13 @@ import argparse
 import importlib.metadata
 import pathlib
 
+import pyfwfinder as fwf
 from result import Err, Ok
 
 from freewili import FreeWili
 from freewili.cli import exit_with_error, get_device
 from freewili.fw import GPIO_MAP
-from freewili.serial_util import FreeWiliProcessorType, IOMenuCommand
+from freewili.serial_util import FreeWiliProcessorType, FreeWiliSerial, IOMenuCommand
 
 
 def main() -> None:
@@ -33,6 +34,13 @@ def main() -> None:
         action="store_true",
         default=False,
         help="List all FreeWili connected to the computer.",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        default=False,
+        help="Verbose output",
     )
     parser.add_argument(
         "-i",
@@ -135,15 +143,55 @@ def main() -> None:
         processor_type = FreeWiliProcessorType.Display
     devices = FreeWili.find_all()
     if args.list:
+
+        def print_usb(index: int, name: str, usb_device: fwf.USBDevice) -> None:
+            port_or_paths = ""
+            if usb_device.port:
+                port_or_paths = usb_device.port
+            elif usb_device.paths:
+                port_or_paths = " ".join(usb_device.paths)
+            if port_or_paths:
+                print(f"\t{index}. {name}: {usb_device.name}: {port_or_paths}")
+            else:
+                print(f"\t{index}. {name}: {usb_device.kind.name}: {usb_device.name} {usb_device.serial}")
+
+        def print_verbose(usb_device: fwf.USBDevice, serial: FreeWiliSerial | None = None) -> None:
+            if not args.verbose:
+                return
+            print(f"\t\tName: {usb_device.name} Serial: {usb_device.serial}")
+            print(f"\t\tVID: 0x{usb_device.vid:04X} PID: 0x{usb_device.pid:04X}")
+            print(f"\t\tUSB Location: {usb_device.location}")
+            print(f"\t\tKind: {usb_device.kind.name}")
+            if usb_device.port:
+                print(f"\t\tSerial Port: {usb_device.port}")
+            if usb_device.paths:
+                print(f"\t\tPaths: {' '.join(usb_device.paths)}")
+            if serial:
+                match serial.get_app_info():
+                    case Ok(app_info):
+                        print(f"\t\tApp Info: {app_info.processor_type} v{app_info.version}")
+                    case Err(msg):
+                        print(f"\t\tApp Info: {msg}")
+
         print(f"Found {len(devices)} FreeWili(s)")
         for i, free_wili in enumerate(devices, start=1):
-            print(f"{i}. {free_wili}")
-            if free_wili.main:
-                print(f"\t1. {free_wili.main.name} {free_wili.main.serial}")
-            if free_wili.display:
-                print(f"\t2. {free_wili.display.name} {free_wili.display.serial}")
-            if free_wili.ftdi:
-                print(f"\t3. {free_wili.ftdi.name} {free_wili.ftdi.serial}")
+            try:
+                free_wili.stay_open = True
+                print(f"{i}. {free_wili}")
+                if free_wili.main:
+                    print_usb(1, "Main", free_wili.main)
+                    print_verbose(free_wili.main, free_wili.main_serial)
+                if free_wili.display:
+                    print_usb(2, "Display", free_wili.display)
+                    print_verbose(free_wili.display, free_wili.display_serial)
+                if free_wili.ftdi:
+                    print_usb(3, "FPGA", free_wili.ftdi)
+                    print_verbose(free_wili.ftdi)
+                if free_wili.esp32:
+                    print_usb(4, "ESP32", free_wili.esp32)
+                    print_verbose(free_wili.esp32)
+            finally:
+                free_wili.close()
     if args.send_file:
         match get_device(device_index, devices):
             case Ok(device):
