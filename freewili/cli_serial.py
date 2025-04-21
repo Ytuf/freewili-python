@@ -138,9 +138,12 @@ def main() -> None:
         print(f"Found {len(devices)} FreeWili(s)")
         for i, free_wili in enumerate(devices, start=1):
             print(f"{i}. {free_wili}")
-            print(f"\t{free_wili.main}")
-            print(f"\t{free_wili.display}")
-            print(f"\t{free_wili.ftdi}")
+            if free_wili.main:
+                print(f"\t1. {free_wili.main.name} {free_wili.main.serial}")
+            if free_wili.display:
+                print(f"\t2. {free_wili.display.name} {free_wili.display.serial}")
+            if free_wili.ftdi:
+                print(f"\t3. {free_wili.ftdi.name} {free_wili.ftdi.serial}")
     if args.send_file:
         match get_device(device_index, devices):
             case Ok(device):

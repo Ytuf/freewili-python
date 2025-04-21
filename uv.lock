@@ -317,10 +317,8 @@ dependencies = [
     { name = "libusb1" },
     { name = "numpy" },
     { name = "pillow" },
-    { name = "pyftdi" },
+    { name = "pyfwfinder" },
     { name = "pyserial" },
-    { name = "pyusb" },
-    { name = "pyusb-chain" },
     { name = "result" },
     { name = "typing-extensions" },
 ]
@@ -346,10 +344,8 @@ requires-dist = [
     { name = "libusb1", specifier = ">=3.3.1" },
     { name = "numpy", specifier = ">=2.2.4" },
     { name = "pillow", specifier = "==11.1.0" },
-    { name = "pyftdi", specifier = ">=0.56.0" },
+    { name = "pyfwfinder", specifier = ">=0.0.1" },
     { name = "pyserial", specifier = "==3.5" },
-    { name = "pyusb", specifier = ">=1.3.1" },
-    { name = "pyusb-chain", specifier = ">=0.2.7" },
     { name = "result", git = "https://github.com/montasaurus/result" },
     { name = "typing-extensions", specifier = "==4.12.2" },
 ]
@@ -986,15 +982,22 @@ wheels = [
 ]
 
 [[package]]
-name = "pyftdi"
-version = "0.56.0"
+name = "pyfwfinder"
+version = "0.0.1"
 source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pyserial" },
-    { name = "pyusb" },
-]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5a/96/a8de7b7e5556d4b00d1ca1969fc34c89a1b6d177876c7a31d42631b090fc/pyftdi-0.56.0-py3-none-any.whl", hash = "sha256:3ef0baadbf9031dde9d623ae66fac2d16ded36ce1b66c17765ca1944cb38b8b0", size = 145718 },
+    { url = "https://files.pythonhosted.org/packages/49/e1/11a52c1a6859782f2721489bffeddf311026bf7ee0268bce70e1c9dd330c/pyfwfinder-0.0.1-cp310-cp310-macosx_10_15_universal2.whl", hash = "sha256:303bd4dd364f1e4b6e79c14e9af434993b1e224d9c5ff36cd9153931ca330d27", size = 146075 },
+    { url = "https://files.pythonhosted.org/packages/d1/21/4b309c01947b19aa1567c9cd5e331f85784f0630427ae6488e1cb8c5f5a3/pyfwfinder-0.0.1-cp310-cp310-manylinux_2_34_x86_64.whl", hash = "sha256:36a510ba062894e06b140b8f5ff3a6aa8ef9083426752f869c779b449941b489", size = 215760 },
+    { url = "https://files.pythonhosted.org/packages/ef/19/0e33ce92178c0a3edc531b0f9bf0a6210fa3ca03ee382d886b79b22444ee/pyfwfinder-0.0.1-cp310-cp310-win_amd64.whl", hash = "sha256:a0c2130482841757f3c79aebfb8f96c36f6bcfeced680eb6774ae6574f2df225", size = 132599 },
+    { url = "https://files.pythonhosted.org/packages/50/7c/349348a8f132fa27178fb0faf4f2056c73f399e18b62ad9525636b5aba64/pyfwfinder-0.0.1-cp310-cp310-win_arm64.whl", hash = "sha256:281c33176582aaa1f933b2c735087f8bc8e79c2895f4e06c8079239b93e56c52", size = 119453 },
+    { url = "https://files.pythonhosted.org/packages/07/ed/317d288970439949a0508be9f471eb6a4a08c6c3b31b0404c7704bca2d00/pyfwfinder-0.0.1-cp311-cp311-macosx_10_15_universal2.whl", hash = "sha256:e610a87bf90870a27ac70b8c286816e832dc70fa2ca47f64b11a3fb7cf818576", size = 146836 },
+    { url = "https://files.pythonhosted.org/packages/18/ba/3e6e4aa05d8199dda7c85694d689323d843817faf1bd942e7bf5b92332f2/pyfwfinder-0.0.1-cp311-cp311-manylinux_2_34_x86_64.whl", hash = "sha256:f0886ad9fbbb11f2b95d267393df0eea93d3f86d402b9668deae857685aaab29", size = 216102 },
+    { url = "https://files.pythonhosted.org/packages/7c/19/6fbc49cba2a42c2a1ac2fd6404f12e47ba407851d1bc5218b7a6a7d15089/pyfwfinder-0.0.1-cp311-cp311-win_amd64.whl", hash = "sha256:2f3a9c87cdb7a572ffa12b0c021f191a3552c4c2da2ab3236c746126304dfbdd", size = 133022 },
+    { url = "https://files.pythonhosted.org/packages/db/37/3616984aa5d90926487185c7a38aee8c73c6949b2721e6ba1923328f14b1/pyfwfinder-0.0.1-cp311-cp311-win_arm64.whl", hash = "sha256:2413bba23b9ae5e5fc2c1f9170d4f3341ab89ba7f7b7470e98b44b0657ef8e00", size = 119796 },
+    { url = "https://files.pythonhosted.org/packages/fd/4f/4fe7df792dbff62733aa76a92c2b671f72ff878e96b087ca664191762d58/pyfwfinder-0.0.1-cp312-abi3-macosx_10_15_universal2.whl", hash = "sha256:289d37960598f8a212ab8183279bcb1145e3f9f5d352c8dd0aaff5da09a5ed6e", size = 139919 },
+    { url = "https://files.pythonhosted.org/packages/23/ee/f0f293402edd9acfd9c6a392884c322d6496f7438cbd653d10367f7c162a/pyfwfinder-0.0.1-cp312-abi3-manylinux_2_34_x86_64.whl", hash = "sha256:40ba4299c1373d7dd7e2a7e09812e5680a00cb8f99d738aaa3a4ba39a0504c6f", size = 212123 },
+    { url = "https://files.pythonhosted.org/packages/54/90/a1b1da5a8b7f751ceb71cf16b9455175d632239221c270dccc17c6cd1b1f/pyfwfinder-0.0.1-cp312-abi3-win_amd64.whl", hash = "sha256:c942bffb37b0b473484e6ed78cf6e70268859fdee16b46eb067bca1d5f3b3439", size = 131270 },
+    { url = "https://files.pythonhosted.org/packages/62/cf/40fcdadf7f7d0ce6219c0148eb6a12a10fdf88c0cf718d5a4acdf1f7db97/pyfwfinder-0.0.1-cp312-abi3-win_arm64.whl", hash = "sha256:63716e05cf7c50e0a6268d6c859cc823094e300a64a536a82d9caecc5bee617a", size = 118322 },
 ]
 
 [[package]]
@@ -1030,27 +1033,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ae/3c/c9d525a414d506893f0cd8a8d0de7706446213181570cdbd766691164e40/pytest-8.3.5.tar.gz", hash = "sha256:f4efe70cc14e511565ac476b57c279e12a855b11f48f212af1080ef2263d3845", size = 1450891 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/30/3d/64ad57c803f1fa1e963a7946b6e0fea4a70df53c1a7fed304586539c2bac/pytest-8.3.5-py3-none-any.whl", hash = "sha256:c69214aa47deac29fad6c2a4f590b9c4a9fdb16a403176fe154b79c0b4d4d820", size = 343634 },
-]
-
-[[package]]
-name = "pyusb"
-version = "1.3.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/00/6b/ce3727395e52b7b76dfcf0c665e37d223b680b9becc60710d4bc08b7b7cb/pyusb-1.3.1.tar.gz", hash = "sha256:3af070b607467c1c164f49d5b0caabe8ac78dbed9298d703a8dbf9df4052d17e", size = 77281 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/28/b8/27e6312e86408a44fe16bd28ee12dd98608b39f7e7e57884a24e8f29b573/pyusb-1.3.1-py3-none-any.whl", hash = "sha256:bf9b754557af4717fe80c2b07cc2b923a9151f5c08d17bdb5345dac09d6a0430", size = 58465 },
-]
-
-[[package]]
-name = "pyusb-chain"
-version = "0.2.7"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "tabulate" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/4d/a1/5d4b61fbb74f79cd4fe63a9af822911673b0a3c97d7e2d442179c6ade94a/pyusb-chain-0.2.7.tar.gz", hash = "sha256:814e779bcc66504801dc24faa43b4331fbc618598b9fca929681848a48f2759a", size = 459624 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/93/ac/269278390bd9e36cf0fd41dc50136c66c999a625c76f998f31a67b3cc5bc/pyusb_chain-0.2.7-py3-none-any.whl", hash = "sha256:94d4cf7550118cf37f239fac21ad2452279ddaf199e638bac673fd1c6be0fafc", size = 469497 },
 ]
 
 [[package]]
@@ -1447,15 +1429,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/04/1b/52b27f2e13ceedc79a908e29eac426a63465a1a01248e5f24aa36a62aeb3/starlette-0.46.1.tar.gz", hash = "sha256:3c88d58ee4bd1bb807c0d1acb381838afc7752f9ddaec81bbe4383611d833230", size = 2580102 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a0/4b/528ccf7a982216885a1ff4908e886b8fb5f19862d1962f56a3fce2435a70/starlette-0.46.1-py3-none-any.whl", hash = "sha256:77c74ed9d2720138b25875133f3a2dae6d854af2ec37dceb56aef370c1d8a227", size = 71995 },
-]
-
-[[package]]
-name = "tabulate"
-version = "0.9.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ec/fe/802052aecb21e3797b8f7902564ab6ea0d60ff8ca23952079064155d1ae1/tabulate-0.9.0.tar.gz", hash = "sha256:0095b12bf5966de529c0feb1fa08671671b3368eec77d7ef7ab114be2c068b3c", size = 81090 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/40/44/4a5f08c96eb108af5cb50b41f76142f0afa346dfa99d5296fe7202a11854/tabulate-0.9.0-py3-none-any.whl", hash = "sha256:024ca478df22e9340661486f85298cff5f6dcdba14f3813e8830015b9ed1948f", size = 35252 },
 ]
 
 [[package]]

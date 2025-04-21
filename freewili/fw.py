@@ -3,30 +3,20 @@
 import pathlib
 import platform
 import sys
-from collections import OrderedDict
 from dataclasses import dataclass
+from typing import List
 
 if sys.version_info >= (3, 11):
     from typing import Self
 else:
     from typing_extensions import Self
 
+import pyfwfinder as fwf
 from result import Err, Ok, Result
 
-import freewili
-from freewili import usb_util
 from freewili.framing import ResponseFrame
 from freewili.serial_util import FreeWiliSerial, IOMenuCommand
 from freewili.types import FreeWiliProcessorType
-from freewili.usb_util import (
-    USB_PID_FW_FTDI,
-    USB_PID_FW_HUB,
-    USB_PID_FW_RPI_UF2_PID,
-    USB_VID_FW_FTDI,
-    USB_VID_FW_HUB,
-    USB_VID_FW_RPI,
-    USBLocationInfo,
-)
 
 # USB Locations:
 # first address = FTDI
@@ -55,72 +45,149 @@ GPIO_MAP = {
 }
 
 
-@dataclass(frozen=True)
-class FreeWiliProcessorInfo:
-    """Processor USB and Serial Port info of the Free-Wili."""
-
-    processor_type: FreeWiliProcessorType
-    usb_info: None | USBLocationInfo
-    serial_info: None | FreeWiliSerial
-
-    def __str__(self) -> str:
-        if self.serial_info:
-            return f"{self.serial_info}"
-        return f"{self.processor_type}: {self.usb_info}"
-
-
-@dataclass(frozen=True)
-class FreeWiliInfo:
-    """FreeWili Info."""
-
-    serial_number: str
-    processors: tuple[FreeWiliProcessorInfo, ...]
-
-
 class FreeWili:
     """Free-Wili device used to access FTDI and serial functionality."""
 
-    def __init__(self, info: FreeWiliInfo):
-        self.info = info
+    def __init__(self, device: fwf.FreeWiliDevice):
+        self.device = device
         self._stay_open = False
 
+        self._main_serial: None | FreeWiliSerial = None  # FreeWiliSerial(self.main.port, self._stay_open)
+        self._display_serial: None | FreeWiliSerial = None  # FreeWiliSerial(self.display.port, self._stay_open)
+
     def __str__(self) -> str:
-        return f"Free-Wili {self.info.serial_number}"
+        return f"Free-Wili {self.device.serial}"
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__}: {self.info.serial_number}>"
-
-    def _get_processor(self, processor_type: FreeWiliProcessorType) -> FreeWiliProcessorInfo:
-        for processor in self.info.processors:
-            if processor.processor_type == processor_type:
-                if processor.serial_info:
-                    processor.serial_info.stay_open = self.stay_open
-                return processor
-        raise IndexError(f"Processor {processor_type} not found for {self}")
+        return f"<{self.__class__.__name__}: {self.device.serial}>"
 
     @property
-    def ftdi(self) -> None | FreeWiliProcessorInfo:
+    def usb_devices(self) -> List[fwf.USBDevice]:
+        """Grab all the USB devices attached to the FreeWili."""
+        return self.device.usb_devices
+
+    def get_usb_device(self, processor_type: FreeWiliProcessorType) -> None | fwf.USBDevice:
+        """Get the USBDevice by ProcessorType.
+
+        Parameters:
+        ----------
+            processor_type: FreeWiliProcessorType
+                Type of processor to get.
+
+        Returns:
+        -------
+            None | fwf.USBDevice:
+                fwf.USBDevice if successful, None otherwise.
+
+        Raises:
+        -------
+            None
+        """
+        match processor_type:
+            case FreeWiliProcessorType.Main:
+                devs = self.device.get_usb_devices(fwf.USBDeviceType.SerialMain)
+                if devs:
+                    return devs[0]
+            case FreeWiliProcessorType.Display:
+                devs = self.device.get_usb_devices(fwf.USBDeviceType.SerialDisplay)
+                if devs:
+                    return devs[0]
+            case FreeWiliProcessorType.FTDI:
+                devs = self.device.get_usb_devices(fwf.USBDeviceType.FTDI)
+                if devs:
+                    return devs[0]
+            case FreeWiliProcessorType.ESP32:
+                devs = self.device.get_usb_devices(fwf.USBDeviceType.ESP32)
+                if devs:
+                    return devs[0]
+        # Legacy support for older VID/PID of Main/Display firmware.
+        assert len(self.usb_devices) >= 3
+        match processor_type:
+            case FreeWiliProcessorType.Main:
+                device = self.usb_devices[0]
+                assert device.kind == fwf.USBDeviceType.Serial
+                return device
+            case FreeWiliProcessorType.Display:
+                device = self.usb_devices[1]
+                assert device.kind == fwf.USBDeviceType.Serial
+                return self.usb_devices[1]
+        return None
+
+    @property
+    def ftdi(self) -> None | fwf.USBDevice:
         """Get FTDI processor."""
-        try:
-            return self._get_processor(FreeWiliProcessorType.FTDI)
-        except IndexError:
-            return None
+        return self.get_usb_device(FreeWiliProcessorType.FTDI)
 
     @property
-    def main(self) -> None | FreeWiliProcessorInfo:
+    def main(self) -> None | fwf.USBDevice:
         """Get Main processor."""
-        try:
-            return self._get_processor(FreeWiliProcessorType.Main)
-        except IndexError:
-                return None
+        return self.get_usb_device(FreeWiliProcessorType.Main)
 
     @property
-    def display(self) -> None | FreeWiliProcessorInfo:
+    def display(self) -> None | fwf.USBDevice:
         """Get Display processor."""
-        try:
-            return self._get_processor(FreeWiliProcessorType.Display)
-        except IndexError:
-            return None
+        return self.get_usb_device(FreeWiliProcessorType.Display)
+
+    @property
+    def main_serial(self) -> None | FreeWiliSerial:
+        """Get Main FreeWiliSerial.
+
+        Arguments:
+        ----------
+            None
+
+        Returns:
+        --------
+            None | FreeWiliSerial:
+                FreeWiliSerial on success, None otherwise.
+        """
+        if not self._main_serial and self.main and self.main.port:
+            self._main_serial = FreeWiliSerial(self.main.port, self._stay_open)
+        return self._main_serial
+
+    @property
+    def display_serial(self) -> None | FreeWiliSerial:
+        """Get Display FreeWiliSerial.
+
+        Arguments:
+        ----------
+            None
+
+        Returns:
+        --------
+            None | FreeWiliSerial:
+                FreeWiliSerial on success, None otherwise.
+        """
+        if not self._display_serial and self.display and self.display.port:
+            self._display_serial = FreeWiliSerial(self.display.port, self._stay_open)
+        return self._display_serial
+
+    def get_serial_from(self, processor_type: FreeWiliProcessorType) -> Result[FreeWiliSerial, str]:
+        """Get FreeWiliSerial from processor type.
+
+        Arguments:
+        ----------
+            processor_type: FreeWiliProcessorType
+                Processor type to get serial port for.
+
+        Returns:
+        --------
+            Result[FreeWiliSerial, str]:
+                Ok(FreeWiliSerial) on success, Err(str) otherwise.
+        """
+        match processor_type:
+            case FreeWiliProcessorType.Main:
+                if self.main_serial:
+                    return Ok(self.main_serial)
+                else:
+                    return Err("Main serial isn't valid")
+            case FreeWiliProcessorType.Display:
+                if self.main_serial:
+                    return Ok(self.display_serial)
+                else:
+                    return Err("Display serial isn't valid")
+            case _:
+                return Err(f"{processor_type} isn't a valid FreeWiliSerial type")
 
     @property
     def stay_open(self) -> bool:
@@ -147,13 +214,10 @@ class FreeWili:
         -------
             None
         """
-        # Get the FreeWiliSerial and use it
-        serial_info = self._get_processor(FreeWiliProcessorType.Main).serial_info
-        if serial_info:
-            serial_info.close()
-        serial_info = self._get_processor(FreeWiliProcessorType.Display).serial_info
-        if serial_info:
-            serial_info.close()
+        if self.main_serial:
+            self.main_serial.close()
+        if self.display_serial:
+            self.display_serial.close()
 
     @classmethod
     def find_first(cls) -> Result[Self, str]:
@@ -197,77 +261,11 @@ class FreeWili:
         -------
             None
         """
-        hubs = usb_util.find_all(USB_VID_FW_HUB, USB_PID_FW_HUB, False, True)
-        if not hubs:
-            # no hubs found
-            return ()
-        # Find all devices we should have on the hub
-        all_usb = usb_util.find_all(USB_VID_FW_FTDI, USB_PID_FW_FTDI, True, False) + usb_util.find_all(
-            USB_VID_FW_RPI, None, True, False
-        )
-        fw_hubs = []
-        for hub in hubs:
-            usb_devices = OrderedDict({})
-            for usb in all_usb:
-                if usb.parent != hub:
-                    continue
-                usb_devices[usb.port_number] = usb
-            fw_hubs.append(usb_devices)
-
-        serial_ports = freewili.serial_util.find_all()
-        freewilis = []
-        for fw_hub in fw_hubs:
-            indexes = sorted(fw_hub.keys())
-            try:
-                main_usb: None | USBLocationInfo = fw_hub[indexes[MAIN_HUB_LOC_INDEX]]
-            except IndexError:
-                main_usb = None
-            try:
-                display_usb: None | USBLocationInfo = fw_hub[indexes[DISPLAY_HUB_LOC_INDEX]]
-            except IndexError:
-                display_usb = None
-            try:
-                ftdi_usb: None | USBLocationInfo = fw_hub[indexes[FTDI_HUB_LOC_INDEX]]
-            except IndexError:
-                ftdi_usb = None
-
-            # match up the serial port to the USB device
-            ftdi_serial = None
-            main_serial = None
-            display_serial = None
-            for serial_port in serial_ports:
-                # Windows likes to append letters to the end of the serial numbers...
-                if ftdi_usb and serial_port.info.serial.startswith(ftdi_usb.serial):
-                    ftdi_serial = serial_port
-                if main_usb and main_usb.serial == serial_port.info.serial:
-                    serial_port.info.fw_serial = ftdi_usb.serial if ftdi_usb else None
-                    main_serial = serial_port
-                if display_usb and display_usb.serial == serial_port.info.serial:
-                    serial_port.info.fw_serial = ftdi_usb.serial if ftdi_usb else None
-                    display_serial = serial_port
-            # Get main processor based on PID
-            main_processor_type = FreeWiliProcessorType.Main
-            if main_usb and main_usb.vendor_id == USB_PID_FW_RPI_UF2_PID:
-                main_processor_type = FreeWiliProcessorType.MainUF2
-            elif main_usb is None:
-                main_processor_type = FreeWiliProcessorType.Unknown
-            # Get display processor based on PID
-            display_processor_type = FreeWiliProcessorType.Display
-            if display_usb and display_usb.vendor_id == USB_PID_FW_RPI_UF2_PID:
-                display_processor_type = FreeWiliProcessorType.DisplayUF2
-            elif display_usb is None:
-                display_processor_type = FreeWiliProcessorType.Unknown
-
-            processors = (
-                FreeWiliProcessorInfo(FreeWiliProcessorType.FTDI, ftdi_usb, ftdi_serial),
-                FreeWiliProcessorInfo(main_processor_type, main_usb, main_serial),
-                FreeWiliProcessorInfo(display_processor_type, display_usb, display_serial),
-            )
-            serial = "None"
-            if ftdi_usb and ftdi_usb.serial:
-                serial = ftdi_usb.serial
-            freewilis.append(FreeWili(FreeWiliInfo(serial, processors)))
-        return tuple(freewilis)  # type: ignore
+        found_devices: List[fwf.FreeWiliDevice] = fwf.find_all()
+        fw_devices: list[Self] = []
+        for device in found_devices:
+            fw_devices.append(cls(device))
+        return tuple(fw_devices)
 
     def send_file(
         self, source_file: str | pathlib.Path, target_name: None | str, processor: None | FreeWiliProcessorType
@@ -298,11 +296,14 @@ class FreeWili:
             return Err(str(ex))
         assert target_name is not None
         assert processor is not None
-        # Get the FreeWiliSerial and use it
-        serial_info = self._get_processor(processor).serial_info
-        if not serial_info:
-            return Err(f"Serial info not available for {processor}")
-        return serial_info.send_file(source_file, target_name)
+
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.send_file(source_file, target_name)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
 
     def run_script(
         self, file_name: str, processor: FreeWiliProcessorType = FreeWiliProcessorType.Main
@@ -321,11 +322,13 @@ class FreeWili:
             Result[str, str]:
                 Ok(str) if the command was sent successfully, Err(str) if not.
         """
-        # Get the FreeWiliSerial and use it
-        serial_info = self._get_processor(processor).serial_info
-        if not serial_info:
-            return Err(f"Serial info not available for {processor}")
-        return serial_info.run_script(file_name)
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.run_script(file_name)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
 
     def get_io(self, processor: FreeWiliProcessorType = FreeWiliProcessorType.Main) -> Result[tuple[int], str]:
         """Get all the IO values.
@@ -340,11 +343,13 @@ class FreeWili:
             Result[tuple[int], str]:
                 Ok(tuple[int]) if the command was sent successfully, Err(str) if not.
         """
-        # Get the FreeWiliSerial and use it
-        serial_info = self._get_processor(processor).serial_info
-        if not serial_info:
-            return Err(f"Serial info not available for {processor}")
-        return serial_info.get_io()
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.get_io()
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
 
     def set_io(
         self: Self,
@@ -374,11 +379,13 @@ class FreeWili:
             Result[ResponseFrame, str]:
                 Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
         """
-        # Get the FreeWiliSerial and use it
-        serial_info = self._get_processor(processor).serial_info
-        if not serial_info:
-            return Err(f"Serial info not available for {processor}")
-        return serial_info.set_io(io, menu_cmd, pwm_freq, pwm_duty)
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.set_io(io, menu_cmd, pwm_freq, pwm_duty)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
 
     def set_board_leds(
         self: Self,
@@ -408,13 +415,13 @@ class FreeWili:
             Result[ResponseFrame, str]:
                 Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
         """
-        # k) GUI Functions
-        # s) Set Board LED [25 100 100 100]
-        # Get the FreeWiliSerial and use it
-        serial_info = self._get_processor(processor).serial_info
-        if not serial_info:
-            return Err(f"Serial info not available for {processor}")
-        return serial_info.set_board_leds(io, red, green, blue)
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.set_board_leds(io, red, green, blue)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
 
     def read_i2c(
         self, address: int, register: int, data_size: int, processor: FreeWiliProcessorType = FreeWiliProcessorType.Main
@@ -437,11 +444,13 @@ class FreeWili:
             Result[ResponseFrame, str]:
                 Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
         """
-        # Get the FreeWiliSerial and use it
-        serial_info = self._get_processor(processor).serial_info
-        if not serial_info:
-            return Err(f"Serial info not available for {processor}")
-        return serial_info.read_i2c(address, register, data_size)
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.read_i2c(address, register, data_size)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
 
     def write_i2c(
         self, address: int, register: int, data: bytes, processor: FreeWiliProcessorType = FreeWiliProcessorType.Main
@@ -464,11 +473,13 @@ class FreeWili:
             Result[ResponseFrame, str]:
                 Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
         """
-        # Get the FreeWiliSerial and use it
-        serial_info = self._get_processor(processor).serial_info
-        if not serial_info:
-            return Err(f"Serial info not available for {processor}")
-        return serial_info.write_i2c(address, register, data)
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.write_i2c(address, register, data)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
 
     def poll_i2c(self, processor: FreeWiliProcessorType = FreeWiliProcessorType.Main) -> Result[ResponseFrame, str]:
         """Write I2C data.
@@ -483,11 +494,13 @@ class FreeWili:
             Result[ResponseFrame, str]:
                 Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
         """
-        # Get the FreeWiliSerial and use it
-        serial_info = self._get_processor(processor).serial_info
-        if not serial_info:
-            return Err(f"Serial info not available for {processor}")
-        return serial_info.poll_i2c()
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.poll_i2c()
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
 
     def show_gui_image(
         self, fwi_path: str, processor: FreeWiliProcessorType = FreeWiliProcessorType.Display
@@ -506,11 +519,13 @@ class FreeWili:
             Result[ResponseFrame, str]:
                 Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
         """
-        # Get the FreeWiliSerial and use it
-        serial_info = self._get_processor(processor).serial_info
-        if not serial_info:
-            return Err(f"Serial info not available for {processor}")
-        return serial_info.show_gui_image(fwi_path)
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.show_gui_image(fwi_path)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
 
     def show_text_display(
         self, text: str, processor: FreeWiliProcessorType = FreeWiliProcessorType.Display
@@ -529,11 +544,13 @@ class FreeWili:
             Result[ResponseFrame, str]:
                 Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
         """
-        # Get the FreeWiliSerial and use it
-        serial_info = self._get_processor(processor).serial_info
-        if not serial_info:
-            return Err(f"Serial info not available for {processor}")
-        return serial_info.show_text_display(text)
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.show_text_display(text)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
 
     def read_all_buttons(
         self, processor: FreeWiliProcessorType = FreeWiliProcessorType.Display
@@ -550,11 +567,13 @@ class FreeWili:
             Result[ResponseFrame, str]:
                 Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
         """
-        # Get the FreeWiliSerial and use it
-        serial_info = self._get_processor(processor).serial_info
-        if not serial_info:
-            return Err(f"Serial info not available for {processor}")
-        return serial_info.read_all_buttons()
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.read_all_buttons()
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
 
     def reset_display(
         self, processor: FreeWiliProcessorType = FreeWiliProcessorType.Display
@@ -571,11 +590,13 @@ class FreeWili:
             Result[ResponseFrame, str]:
                 Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
         """
-        # Get the FreeWiliSerial and use it
-        serial_info = self._get_processor(processor).serial_info
-        if not serial_info:
-            return Err(f"Serial info not available for {processor}")
-        return serial_info.reset_display()
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.reset_display()
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
 
 
 @dataclass(frozen=True)
