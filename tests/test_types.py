@@ -10,7 +10,8 @@ def test_processor_type() -> None:
     assert FreeWiliProcessorType.Display.value == 3
     assert FreeWiliProcessorType.DisplayUF2.value == 4
     assert FreeWiliProcessorType.FTDI.value == 5
-    assert FreeWiliProcessorType.Unknown.value == 6
+    assert FreeWiliProcessorType.ESP32.value == 6
+    assert FreeWiliProcessorType.Unknown.value == 7
 
 
 if __name__ == "__main__":
