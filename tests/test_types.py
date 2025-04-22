@@ -6,12 +6,10 @@ from freewili.serial_util import FreeWiliProcessorType
 def test_processor_type() -> None:
     """Test processor type for ABI breakage."""
     assert FreeWiliProcessorType.Main.value == 1
-    assert FreeWiliProcessorType.MainUF2.value == 2
-    assert FreeWiliProcessorType.Display.value == 3
-    assert FreeWiliProcessorType.DisplayUF2.value == 4
-    assert FreeWiliProcessorType.FTDI.value == 5
-    assert FreeWiliProcessorType.ESP32.value == 6
-    assert FreeWiliProcessorType.Unknown.value == 7
+    assert FreeWiliProcessorType.Display.value == 2
+    assert FreeWiliProcessorType.FTDI.value == 3
+    assert FreeWiliProcessorType.ESP32.value == 4
+    assert FreeWiliProcessorType.Unknown.value == 5
 
 
 if __name__ == "__main__":

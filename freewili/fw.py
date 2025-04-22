@@ -100,6 +100,22 @@ class FreeWili:
                 devs = self.device.get_usb_devices(fwf.USBDeviceType.ESP32)
                 if devs:
                     return devs[0]
+        # Get the processor by location
+        # TODO: MAC will be broke here
+        if processor_type in (FreeWiliProcessorType.Main, FreeWiliProcessorType.Display):
+            for usb_device in self.usb_devices:
+                if (
+                    processor_type == FreeWiliProcessorType.Main
+                    and usb_device.kind == fwf.USBDeviceType.MassStorage
+                    and usb_device.location == 1
+                ):
+                    return usb_device
+                if (
+                    processor_type == FreeWiliProcessorType.Display
+                    and usb_device.kind == fwf.USBDeviceType.MassStorage
+                    and usb_device.location == 2
+                ):
+                    return usb_device
         # Legacy support for older VID/PID of Main/Display firmware.
         if len(self.usb_devices) < 3:
             return None
