@@ -795,11 +795,16 @@ class FreeWiliSerial:
             else:
                 self._serial.port = self.port
             self._serial.baudrate = 1200
-            self._serial.open()
-            time.sleep(0.1)
+            try:
+                self._serial.open()
+            except serial.serialutil.SerialException as _ex:
+                # SerialException("Cannot configure port, something went wrong.
+                # Original message:
+                # PermissionError(13, 'A device attached to the system is not functioning.', None, 31)")
+                return Ok(None)
             self._serial.close()
-            return Ok(None)
-        except serial.serialutil.SerialException as ex:
+            return Err("Failed to reset to UF2 bootloader")
+        except Exception as ex:
             return Err(str(ex))
         finally:
             self._serial.baudrate = original_baudrate
