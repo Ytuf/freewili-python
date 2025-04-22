@@ -494,7 +494,7 @@ class FreeWiliSerial:
                 return Err(e)
 
     @needs_open(True)
-    def poll_i2c(self) -> Result[ResponseFrame, str]:  # Result[Tuple[int, ...], str]:
+    def poll_i2c(self) -> Result[ResponseFrame, str]:
         """Run a script on the FreeWili.
 
         Arguments:
@@ -515,7 +515,7 @@ class FreeWiliSerial:
                 return Err(e)
 
     @needs_open(False)
-    def show_gui_image(self, fwi_path: str) -> Result[ResponseFrame, str]:  # Result[Tuple[int, ...], str]:
+    def show_gui_image(self, fwi_path: str) -> Result[ResponseFrame, str]:
         """Show a fwi image on the display.
 
         Arguments:
@@ -539,7 +539,7 @@ class FreeWiliSerial:
                 return Err(e)
 
     @needs_open(False)
-    def reset_display(self) -> Result[ResponseFrame, str]:  # Result[Tuple[int, ...], str]:
+    def reset_display(self) -> Result[ResponseFrame, str]:
         """Reset the display back to the main menu.
 
         Arguments:
@@ -562,7 +562,7 @@ class FreeWiliSerial:
                 return Err(e)
 
     @needs_open(False)
-    def show_text_display(self, text: str) -> Result[ResponseFrame, str]:  # Result[Tuple[int, ...], str]:
+    def show_text_display(self, text: str) -> Result[ResponseFrame, str]:
         """Show text on the display.
 
         Arguments:
@@ -586,7 +586,7 @@ class FreeWiliSerial:
                 return Err(e)
 
     @needs_open(False)
-    def read_all_buttons(self) -> Result[ResponseFrame, str]:  # Result[Tuple[int, ...], str]:
+    def read_all_buttons(self) -> Result[ResponseFrame, str]:
         """Read all the buttons.
 
         Arguments:

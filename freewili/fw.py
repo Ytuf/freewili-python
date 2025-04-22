@@ -511,7 +511,7 @@ class FreeWili:
 
     def show_gui_image(
         self, fwi_path: str, processor: FreeWiliProcessorType = FreeWiliProcessorType.Display
-    ) -> Result[ResponseFrame, str]:  # Result[Tuple[int, ...], str]:
+    ) -> Result[ResponseFrame, str]:
         """Show a fwi image on the display.
 
         Arguments:
@@ -536,7 +536,7 @@ class FreeWili:
 
     def show_text_display(
         self, text: str, processor: FreeWiliProcessorType = FreeWiliProcessorType.Display
-    ) -> Result[ResponseFrame, str]:  # Result[Tuple[int, ...], str]:
+    ) -> Result[ResponseFrame, str]:
         """Show text on the display.
 
         Arguments:
@@ -561,7 +561,7 @@ class FreeWili:
 
     def read_all_buttons(
         self, processor: FreeWiliProcessorType = FreeWiliProcessorType.Display
-    ) -> Result[ResponseFrame, str]:  # Result[Tuple[int, ...], str]:
+    ) -> Result[ResponseFrame, str]:
         """Read all the buttons.
 
         Arguments:
@@ -584,7 +584,7 @@ class FreeWili:
 
     def reset_display(
         self, processor: FreeWiliProcessorType = FreeWiliProcessorType.Display
-    ) -> Result[ResponseFrame, str]:  # Result[Tuple[int, ...], str]:
+    ) -> Result[ResponseFrame, str]:
         """Reset the display back to the main menu.
 
         Arguments:
@@ -600,6 +600,27 @@ class FreeWili:
         match self.get_serial_from(processor):
             case Ok(serial):
                 return serial.reset_display()
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
+
+    def reset_to_uf2_bootloader(self, processor: FreeWiliProcessorType) -> Result[None, str]:
+        """Reset the FreeWili to the uf2 bootloader.
+
+        Arguments:
+        ----------
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        -------
+            Result[None, str]:
+                Returns Ok(None) if the command was sent successfully, Err(str) if not.
+        """
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.reset_to_uf2_bootloader()
             case Err(msg):
                 return Err(msg)
             case _:
