@@ -101,7 +101,8 @@ class FreeWili:
                 if devs:
                     return devs[0]
         # Legacy support for older VID/PID of Main/Display firmware.
-        assert len(self.usb_devices) >= 3
+        if len(self.usb_devices) < 3:
+            return None
         match processor_type:
             case FreeWiliProcessorType.Main:
                 device = self.usb_devices[0]
