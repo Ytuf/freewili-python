@@ -7,6 +7,7 @@ import dataclasses
 import enum
 import functools
 import pathlib
+import platform
 import re
 import sys
 import time
@@ -797,15 +798,17 @@ class FreeWiliSerial:
             self._serial.baudrate = 1200
             try:
                 self._serial.open()
-            except serial.serialutil.SerialException as _ex:
-                # SerialException("Cannot configure port, something went wrong.
-                # Original message:
-                # PermissionError(13, 'A device attached to the system is not functioning.', None, 31)")
-                return Ok(None)
+            except serial.serialutil.SerialException as ex:
+                if platform.system() == "Windows":
+                    # SerialException("Cannot configure port, something went wrong.
+                    # Original message:
+                    # PermissionError(13, 'A device attached to the system is not functioning.', None, 31)")
+                    return Ok(None)
+                raise ex from ex
             self._serial.close()
-            return Err("Failed to reset to UF2 bootloader")
+            return Ok(None)
         except Exception as ex:
-            return Err(str(ex))
+            return Err(f"Failed to reset to UF2 bootloader {str(ex)}")
         finally:
             self._serial.baudrate = original_baudrate
 
