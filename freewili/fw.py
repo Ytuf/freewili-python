@@ -4,7 +4,7 @@ import pathlib
 import platform
 import sys
 from dataclasses import dataclass
-from typing import List
+from typing import Callable, List
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -106,13 +106,13 @@ class FreeWili:
             for usb_device in self.usb_devices:
                 if (
                     processor_type == FreeWiliProcessorType.Main
-                    and usb_device.kind == fwf.USBDeviceType.MassStorage
+                    # and usb_device.kind == fwf.USBDeviceType.MassStorage
                     and usb_device.location == 1
                 ):
                     return usb_device
                 if (
                     processor_type == FreeWiliProcessorType.Display
-                    and usb_device.kind == fwf.USBDeviceType.MassStorage
+                    # and usb_device.kind == fwf.USBDeviceType.MassStorage
                     and usb_device.location == 2
                 ):
                     return usb_device
@@ -162,7 +162,7 @@ class FreeWili:
                 FreeWiliSerial on success, None otherwise.
         """
         if not self._main_serial and self.main and self.main.port:
-            self._main_serial = FreeWiliSerial(self.main.port, self._stay_open)
+            self._main_serial = FreeWiliSerial(self.main.port, self._stay_open, "Main: " + str(self))
         if self._main_serial:
             self._main_serial.stay_open = self._stay_open
         return self._main_serial
@@ -181,7 +181,7 @@ class FreeWili:
                 FreeWiliSerial on success, None otherwise.
         """
         if not self._display_serial and self.display and self.display.port:
-            self._display_serial = FreeWiliSerial(self.display.port, self._stay_open)
+            self._display_serial = FreeWiliSerial(self.display.port, self._stay_open, "Display: " + str(self))
         if self._display_serial:
             self._display_serial.stay_open = self._stay_open
         return self._display_serial
@@ -206,7 +206,7 @@ class FreeWili:
                 else:
                     return Err("Main serial isn't valid")
             case FreeWiliProcessorType.Display:
-                if self.main_serial:
+                if self.display_serial:
                     return Ok(self.display_serial)
                 else:
                     return Err("Display serial isn't valid")
@@ -225,6 +225,31 @@ class FreeWili:
     @stay_open.setter
     def stay_open(self, value: bool) -> None:
         self._stay_open = value
+
+    def open(self, block: bool = True, timeout_sec: float = 6.0) -> Result[None, str]:
+        """Open the serial port. Use in conjunction with stay_open.
+
+        Arguments:
+        ----------
+            block: bool:
+                If True, block until the serial port is opened.
+            timeout_sec: float:
+                number of seconds to wait when blocking.
+
+        Returns:
+        -------
+            Result[None, str]:
+                Ok(None) if successful, Err(str) otherwise.
+        """
+        if self.main_serial:
+            result = self.main_serial.open(block, timeout_sec)
+            if result.is_err():
+                return Err(result.err())
+        if self.display_serial:
+            result = self.display_serial.open(block, timeout_sec)
+            if result.is_err():
+                return Err(result.err())
+        return Ok(None)
 
     def close(self, restore_menu: bool = True) -> None:
         """Close the serial port. Use in conjunction with stay_open.
@@ -292,7 +317,10 @@ class FreeWili:
         return tuple(fw_devices)
 
     def send_file(
-        self, source_file: str | pathlib.Path, target_name: None | str, processor: None | FreeWiliProcessorType
+        self,
+        source_file: str | pathlib.Path,
+        target_name: None | str = None,
+        processor: None | FreeWiliProcessorType = None,
     ) -> Result[str, str]:
         """Send a file to the FreeWili.
 
@@ -324,6 +352,40 @@ class FreeWili:
         match self.get_serial_from(processor):
             case Ok(serial):
                 return serial.send_file(source_file, target_name)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
+
+    def get_file(
+        self,
+        source_file: str,
+        destination_path: pathlib.Path,
+        event_cb: Callable | None,
+        processor: FreeWiliProcessorType,
+    ) -> Result[str, str]:
+        """Send a file to the FreeWili.
+
+        Arguments:
+        ----------
+            source_file: pathlib.Path
+                Path to the file to be sent.
+            destination_path: pathlib.Path
+                file path to save on the PC
+            event_cb: Callable | None
+                event callback function. Takes two arguments of a ResponseFrame and a string.
+                    def user_callback(rf: ResponseFrame | None, msg: str) -> None
+            processor: None | FreeWiliProcessorType
+                Processor to upload the file to. If None, will be determined automatically based on the filename.
+
+        Returns:
+        -------
+            Result[str, str]:
+                Returns Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.get_file(source_file, destination_path, event_cb)
             case Err(msg):
                 return Err(msg)
             case _:
