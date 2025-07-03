@@ -274,12 +274,11 @@ def main() -> None:
                     if io_args_length >= 4:
                         print(f"PWM Frequency: {pwm_freq_hz}Hz {pwm_duty_cycle}%", end="")
                     print()
-                    resp = device.set_io(io_pin, menu_cmd, pwm_freq_hz, pwm_duty_cycle).unwrap_or(
-                        "Failed to configure IO pin"
-                    )
-                    if not resp.is_ok():
-                        exit_with_error(f"Failed to configure IO pin: {resp.response}")
-                    print(f"Successfully configured pin {io_pin} {menu_cmd.name}")
+                    match device.set_io(io_pin, menu_cmd, pwm_freq_hz, pwm_duty_cycle):
+                        case Ok(msg):
+                            print(f"Successfully configured pin {io_pin} {menu_cmd.name}: {msg}")
+                        case Err(msg):
+                            exit_with_error("Failed to configure IO pin: {msg}")
                 case Err(msg):
                     exit_with_error(msg)
     if args.led:
@@ -291,13 +290,12 @@ def main() -> None:
             case Ok(device):
                 print(f"Setting LED {led_num} to RGB: {red}, {green}, {blue}...")
                 match device.set_board_leds(led_num, red, green, blue):
-                    case Ok(resp):
-                        if not resp.is_ok():
-                            exit_with_error(f"Failed to set LED {resp.response}")
-                        else:
-                            print(f"Successfully set LED {led_num}")
+                    case Ok(msg):
+                        print(f"Successfully set LED {led_num}: {msg}")
                     case Err(msg):
                         exit_with_error(msg)
+                    case _:
+                        raise RuntimeError("Missing case statement")
             case Err(msg):
                 exit_with_error(msg)
     if args.gui_image:
@@ -306,13 +304,10 @@ def main() -> None:
             case Ok(device):
                 print(f"Showing Image {value}...")
                 match device.show_gui_image(value):
-                    case Ok(resp):
-                        if not resp.is_ok():
-                            exit_with_error(f"Failed to show Image {resp.response}")
-                        else:
-                            print(f"Successfully showing {value}")
+                    case Ok(msg):
+                        print(f"Successfully showing {value}: {msg}")
                     case Err(msg):
-                        exit_with_error(msg)
+                        exit_with_error(f"Failed to show Image {msg}")
             case Err(msg):
                 exit_with_error(msg)
     if args.gui_text:
@@ -321,13 +316,10 @@ def main() -> None:
             case Ok(device):
                 print(f"Showing text {value}...")
                 match device.show_text_display(value):
-                    case Ok(resp):
-                        if not resp.is_ok():
-                            exit_with_error(f"Failed to show text {resp.response}")
-                        else:
-                            print(f"Successfully showing {value}")
+                    case Ok(msg):
+                        print(f"Successfully showing {value}: {msg}")
                     case Err(msg):
-                        exit_with_error(msg)
+                        exit_with_error(f"Failed to show text {msg}")
             case Err(msg):
                 exit_with_error(msg)
     if args.read_buttons:
@@ -335,13 +327,14 @@ def main() -> None:
             case Ok(device):
                 print("Getting button values...")
                 match device.read_all_buttons():
-                    case Ok(resp):
-                        if not resp.is_ok():
-                            exit_with_error(f"Failed to show text {resp.response}")
-                        else:
-                            print(resp.response)
+                    case Ok(buttons):
+                        for button_color, button_state in buttons.items():
+                            msg = f"\N{WHITE HEAVY CHECK MARK} {button_color.name} Pressed"
+                            if button_state == 0:
+                                msg = f"\N{CROSS MARK} {button_color.name} Released"
+                            print(msg)
                     case Err(msg):
-                        exit_with_error(msg)
+                        exit_with_error(f"Failed to get button values {msg}")
             case Err(msg):
                 exit_with_error(msg)
     if args.reset_display:
@@ -349,11 +342,10 @@ def main() -> None:
             case Ok(device):
                 print("Resetting display...")
                 match device.reset_display():
-                    case Ok(resp):
-                        if not resp.is_ok():
-                            exit_with_error(f"Failed to reset display {resp.response}")
-                        else:
-                            print(resp.response)
+                    case Ok(msg):
+                        print(f"Successfully reset display: {msg}")
+                    case Err(msg):
+                        exit_with_error(f"Failed to reset display {msg}")
                     case Err(msg):
                         exit_with_error(msg)
             case Err(msg):
