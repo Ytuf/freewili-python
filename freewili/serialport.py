@@ -205,7 +205,7 @@ class SerialPort(threading.Thread):
                             self._debug_print(f"[{time.time() - start_time:.3f}] Opening {self._port}...\n")
                             serial_port = Serial(
                                 self._port,
-                                baudrate=1000000,
+                                baudrate=self._baudrate,
                                 timeout=0.001,
                                 exclusive=True,
                                 rtscts=False,
@@ -242,18 +242,24 @@ class SerialPort(threading.Thread):
                 # Send data
                 try:
                     send_data, delay_sec = self.send_queue.get_nowait()
+                    if not serial_port or not serial_port.is_open:
+                        self._debug_print(
+                            f"[{time.time() - start_time:.3f}] ERROR: Attempted to write but serial port is not open."
+                        )
+                        self.send_queue.task_done()
+                        continue
                     # self._debug_print(f"[{time.time() - start_time:.3f}] sending: ", send_data, self._port)
                     write_len = serial_port.write(send_data)
                     # self._debug_print(f"[{time.time() - start_time:.3f}]: Delaying for {delay_sec:.3f} seconds...")
                     time.sleep(delay_sec)
                     self.send_queue.task_done()
                     if len(send_data) != write_len:
-                        self._debug_print("[{time.time()-start_time:.3f}] ERROR: send_data != write_len")
+                        self._debug_print(f"[{time.time() - start_time:.3f}] ERROR: send_data != write_len")
                     assert len(send_data) == write_len, f"{len(send_data)} != {write_len}"
                 except queue.Empty:
                     pass
                 # Read data
-                if serial_port.in_waiting > 0:
+                if serial_port and serial_port.is_open and serial_port.in_waiting > 0:
                     # self._debug_print(f"[{time.time() - start_time:.3f}] Reading {serial_port.in_waiting}...")
                     data = serial_port.read(4096)
                     if data != b"":
@@ -268,8 +274,10 @@ class SerialPort(threading.Thread):
                 if serial_port and serial_port.is_open:
                     serial_port.close()
                     serial_port = None
+                self._is_connected = False
         if serial_port:
             serial_port.close()
+        self._is_connected = False
         self._debug_print("Done.")
 
     def _debug_print(self, *args: Any, **kwargs: Any) -> None:
@@ -287,7 +295,7 @@ class SerialPort(threading.Thread):
             self._debug_print(f"RX Event Frame: {frame!r}")
             # self._debug_print(f"Buffer len: {data_buffer.available()} {data_buffer.peek()!r}")
             self.rf_event_queue.put(ResponseFrame.from_raw(frame))
-            _debug_count = 0
+            self._debug_count = 0
         # Match a full response frame
         while frame := data_buffer.pop_first_match(rb"\[[^\*].*.\d\]\r?\n"):
             self._debug_print(f"RX Frame: {frame!r}")
