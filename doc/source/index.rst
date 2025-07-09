@@ -14,40 +14,30 @@ See https://github.com/freewili/freewili-python for source code.
 Installation
 ------------
 
-free-wili module requires Python 3.10 or newer and libusb installed for your platform.
+free-wili module requires Python 3.10 or newer.
 
 .. code-block:: bash
     :caption: freewili module installation
 
       pip install freewili
 
-Windows
-^^^^^^^
-
-As of 0.0.23, libusb1 python package provides libusb-1.0.dll, nothing more should be needed.
 
 Linux
 ^^^^^
 
-Install libusb using your package manager.
+udev rules are required to access the Free-Wili device without root privileges.
 
 .. code-block:: bash
-    :caption: Ubuntu/Debian libusb
+    :caption: /etc/udev/rules.d/99-freewili.rules
+    
+      # FT232H
+      SUBSYSTEM=="usb", ATTR{idVendor}=="0403", ATTR{idProduct}=="6014", GROUP="users", MODE="0777"
 
-      apt install libusb-1.0
+      # RP2040 CDC
+      SUBSYSTEM=="usb", ATTR{idVendor}=="2e8a", ATTR{idProduct}=="000a", GROUP="users", MODE="0777"
 
-
-Please see https://pkgs.org/search/?q=libusb for a list of packages on other distributions. Double check you are installing libusb-1.0 and not libusb-0.1
-
-MacOS
-^^^^^
-
-Install libusb using brew
-
-.. code-block:: bash
-    :caption: macOS libusb install through brew
-
-      brew install libusb
+      # RP2040 UF2
+      SUBSYSTEM=="usb", ATTR{idVendor}=="2e8a", ATTR{idProduct}=="0003", GROUP="users", MODE="0777"
 
 Contents
 --------
@@ -55,11 +45,7 @@ Contents
    :maxdepth: 3
 
    index
-   examples
-   fw
-   serial_util
-   image
-   usb_util
-   types
+   cli
    dev
-   framing
+   examples
+   api

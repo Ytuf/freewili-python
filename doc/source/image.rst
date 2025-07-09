@@ -18,14 +18,6 @@ Image Examples
             case Err(msg):
                 exit_with_error(msg)
 
-
-fwi-convert command line interface
-----------------------------------
-
-Included in the freewili module is command line interfaces to allow easy interactions with this API.
-
-.. command-output:: fwi-convert --help
-
 Image module API
 ----------------
 
