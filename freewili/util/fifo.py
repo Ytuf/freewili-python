@@ -2,15 +2,12 @@
 
 import io
 import re
-import sys
 import threading
 
-if sys.version_info >= (3, 12):
-    from typing import SupportsBuffer  # type: ignore
-
-    BufferType = SupportsBuffer
-else:
-    BufferType = bytes | bytearray | memoryview
+try:
+    from typing import SupportsBuffer as BufferType  # type: ignore
+except ImportError:
+    BufferType = bytes  # Fallback for Python <3.12; adjust as needed
 
 
 class SafeIOFIFOBuffer(io.RawIOBase):
