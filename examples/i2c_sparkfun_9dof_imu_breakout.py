@@ -6,8 +6,7 @@ MMC5983MA Magnetometer I2C Address: 0x30
 """
 
 import enum
-
-from result import Err, Ok
+from time import time
 
 from freewili import FreeWili
 
@@ -116,7 +115,7 @@ class ISM330DHCX(enum.Enum):
     FIFO_DATA_OUT_Z_H = 0x7E
 
 
-def get_mmc5983ma_temperature(device: FreeWili) -> tuple[float, int]:
+def get_mmc5983ma_temperature(device: FreeWili) -> float:
     """Get temperature on MMC5983MA.
 
     Arguments:
@@ -129,25 +128,23 @@ def get_mmc5983ma_temperature(device: FreeWili) -> tuple[float, int]:
         tuple[float, int]:
             (Temperature in degrees Celcius, timestamp in ns).
     """
-    resp = device.write_i2c(MMC5983MA_ADDR, MMC5983MA.Control0.value, bytes([0x2A])).expect("Enable temp measure")
-    # print(resp.is_ok())
-    # print("Waiting for temperature measurement...")
+    _ = device.write_i2c(MMC5983MA_ADDR, MMC5983MA.Control0.value, bytes([0x2A])).expect("Enable temp measure")
     while True:
-        resp = device.read_i2c(MMC5983MA_ADDR, MMC5983MA.Status.value, 1).expect("Reading Status failed")
-        status = resp.response_as_bytes().expect("Status bytes")[0]
+        response = device.read_i2c(MMC5983MA_ADDR, MMC5983MA.Status.value, 1).expect("Reading Status failed")
+        status = response[0]
         if (status & 0x2) == 0x2:
             # print("Temperature measurement done!")
             break
-    resp = device.read_i2c(MMC5983MA_ADDR, MMC5983MA.Tout.value, 1).expect("Reading Tout failed")
+    response = device.read_i2c(MMC5983MA_ADDR, MMC5983MA.Tout.value, 1).expect("Reading Tout failed")
     # Temperature output, unsigned format. The range is -75~125°C, about 0.8°C/LSB, 00000000 stands for -75°C
-    temp = resp.response_as_bytes().expect("MMC5983MA.Tout")
+    temp = response
     temp_int = int.from_bytes(temp, byteorder="little", signed=False)
     converted = temp_int * 0.8 - 75
     # print(resp._raw.strip())
-    return (converted, resp.timestamp)
+    return converted
 
 
-def get_mmc5983ma_magnetic_sensor(device: FreeWili) -> tuple[tuple[int, int, int], int]:
+def get_mmc5983ma_magnetic_sensor(device: FreeWili) -> tuple[int, int, int]:
     """Get magnetic field data on MMC5983MA.
 
     Arguments:
@@ -157,55 +154,43 @@ def get_mmc5983ma_magnetic_sensor(device: FreeWili) -> tuple[tuple[int, int, int
 
     Returns:
     --------
-        tuple[tuple[int, int, int], int]:
-            ((x, y, z), timestamp in ns).
+        tuple[int, int, int]:
+            (x, y, z).
     """
-    resp = device.write_i2c(MMC5983MA_ADDR, MMC5983MA.Control0.value, bytes([0x29])).expect("Enable magnetic field")
-    # print(resp.is_ok())
-    # print("Waiting for temperature measurement...")
+    _ = device.write_i2c(MMC5983MA_ADDR, MMC5983MA.Control0.value, bytes([0x29])).expect("Enable magnetic field")
     while True:
-        resp = device.read_i2c(MMC5983MA_ADDR, MMC5983MA.Status.value, 1).expect("Reading Status failed")
-        status = resp.response_as_bytes().expect("Status bytes")[0]
+        response = device.read_i2c(MMC5983MA_ADDR, MMC5983MA.Status.value, 1).expect("Reading Status failed")
+        status = response[0]
         if (status & 0x1) == 0x1:
             # print("Temperature measurement done!")
             break
-    resp = device.read_i2c(MMC5983MA_ADDR, MMC5983MA.Xout0.value, 6).expect("Reading Tout failed")
-    data = resp.response_as_bytes().expect("MMC5983MA.Xout0")
+    data = device.read_i2c(MMC5983MA_ADDR, MMC5983MA.Xout0.value, 6).expect("Reading Tout failed")
     x = int.from_bytes(data[0:2], byteorder="little", signed=False) << 2
     y = int.from_bytes(data[2:4], byteorder="little", signed=False) << 2
     z = int.from_bytes(data[4:6], byteorder="little", signed=False) << 2
-    # print(resp._raw.strip())
-    return ((x, y, z), resp.timestamp)
+    return (x, y, z)
 
 
 # find a FreeWili device
-match FreeWili.find_first():
-    case Ok(d):
-        device = d
-        device.stay_open = True
-        print(f"Using {device}")
-    case Err(msg):
-        print(msg)
-        exit(1)
+device = FreeWili.find_first().expect("Failed to find a FreeWili")
+device.open().expect("Failed to open FreeWili")
 
 try:
     # Poll the I2C to make sure we can read the breakout board
     print("Polling I2C...")
-    resp = device.poll_i2c().expect("Failed to poll i2c")
-    addresses = resp.response_as_bytes().expect("Failed to get response bytes")
-    if addresses != bytes([2, MMC5983MA_ADDR, ISM330DHCX_ADDR]):
-        print(f"Expected addresses on I2C are incorrect, got {list(addresses)}!")
+    addresses = device.poll_i2c().expect("Failed to poll I2C")
+    if MMC5983MA_ADDR not in addresses or ISM330DHCX_ADDR not in addresses:
+        print(f"Expected I2C addresses {MMC5983MA_ADDR} and {ISM330DHCX_ADDR} not found. Got {addresses}!")
         exit(1)
 
-    first_ts = resp.timestamp
-    print(resp.timestamp_as_datetime().expect("Failed to convert to datetime"))
+    start = time()
     while True:
         try:
-            temp_c, ts = get_mmc5983ma_temperature(device)
+            temp_c = get_mmc5983ma_temperature(device)
             temp_f = temp_c * 1.8 + 32
-            print(f"[{ts - first_ts}] Temperature: {temp_c:.2f}C ({temp_f:.2f}F)")
-            magnetic_data, ts = get_mmc5983ma_magnetic_sensor(device)
-            print(f"[{ts - first_ts}] Magnetic Field: {magnetic_data}")
+            print(f"[{time() - start:.3f}] Temperature: {temp_c:.1f}C ({temp_f:.1f}F)")
+            magnetic_data = get_mmc5983ma_magnetic_sensor(device)
+            print(f"[{time() - start:.3f}] Magnetic Field: {magnetic_data}")
         except KeyboardInterrupt:
             break
 finally:
