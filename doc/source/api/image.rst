@@ -1,10 +1,13 @@
-Image Module
-================
-API for converting image files to Free-Wili (fwi) files.
+image
+========
 
+.. automodule:: freewili.image
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
-Image Examples
---------------
+Image Example
+---------------
 
 .. code-block:: python
     :caption: Convert an image to an fwi file
@@ -18,10 +21,3 @@ Image Examples
             case Err(msg):
                 exit_with_error(msg)
 
-Image module API
-----------------
-
-.. automodule:: freewili.image
-   :members:
-   :show-inheritance:
-   :undoc-members:

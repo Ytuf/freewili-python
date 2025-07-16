@@ -16,11 +16,11 @@ def main() -> None:
     """A command line interface to convert a jpg or png image to a fwi file.
 
     Parameters:
-    ----------
+    -----------
         None
 
     Returns:
-    -------
+    --------
         None
     """
     parser = argparse.ArgumentParser()

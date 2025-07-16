@@ -11,7 +11,7 @@ def convert(input_file: pathlib.Path, output_file: pathlib.Path) -> Result[str, 
     """Convert a PNG or JPEG image to a FreeWili image file (fwi extension).
 
     Parameters:
-    ----------
+    -----------
     input_file : pathlib.Path:
         Path to the input image file (PNG or JPEG).
 
@@ -19,7 +19,7 @@ def convert(input_file: pathlib.Path, output_file: pathlib.Path) -> Result[str, 
         Path to the output image file (.fwi).
 
     Returns:
-    -------
+    --------
         Result[str, str]:
             Ok(str) if the command was sent successfully, Err(str) if not.
     """

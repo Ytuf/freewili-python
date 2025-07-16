@@ -39,7 +39,7 @@ class SafeIOFIFOBuffer(io.RawIOBase):
             b (bytes or bytearray): Data to write.
 
         Returns:
-        -------
+        --------
             int: Number of bytes written.
         """
         if not isinstance(b, (bytes, bytearray)):
@@ -61,7 +61,7 @@ class SafeIOFIFOBuffer(io.RawIOBase):
             size (int): Number of bytes to read.
 
         Returns:
-        -------
+        --------
             bytes: Bytes read from the buffer.
         """
         with self._not_empty:
@@ -106,7 +106,7 @@ class SafeIOFIFOBuffer(io.RawIOBase):
             limit (int): Optional maximum number of bytes to read.
 
         Returns:
-        -------
+        --------
             bytes: A single line, including the trailing newline.
         """
         if limit is None:
@@ -157,7 +157,7 @@ class SafeIOFIFOBuffer(io.RawIOBase):
             delimiter (bytes): Byte sequence to read until.
 
         Returns:
-        -------
+        --------
             bytes: Data including the delimiter.
 
         Raises:
@@ -199,7 +199,7 @@ class SafeIOFIFOBuffer(io.RawIOBase):
             size (int): Number of bytes to peek.
 
         Returns:
-        -------
+        --------
             bytes: Peeked data.
         """
         with self._lock:
@@ -218,7 +218,7 @@ class SafeIOFIFOBuffer(io.RawIOBase):
             whence (int): io.SEEK_SET, io.SEEK_CUR, or io.SEEK_END.
 
         Returns:
-        -------
+        --------
             int: New position.
         """
         with self._lock:
@@ -240,7 +240,7 @@ class SafeIOFIFOBuffer(io.RawIOBase):
         """Return the current read position.
 
         Returns:
-        -------
+        --------
             int: Current read position in buffer.
         """
         with self._lock:
@@ -251,7 +251,7 @@ class SafeIOFIFOBuffer(io.RawIOBase):
         """Return the number of bytes available for reading.
 
         Returns:
-        -------
+        --------
             int: Number of bytes available for reading.
         """
         with self._lock:
@@ -266,7 +266,7 @@ class SafeIOFIFOBuffer(io.RawIOBase):
             pattern (bytes): A regex pattern in bytes (e.g. rb'abc\d+').
 
         Returns:
-        -------
+        --------
             Optional[bytes]: The matched bytes if found and removed, otherwise None.
         """
         with self._lock:
@@ -292,7 +292,7 @@ class SafeIOFIFOBuffer(io.RawIOBase):
             pattern (bytes): A regex pattern in bytes (e.g. rb'abc\d+').
 
         Returns:
-        -------
+        --------
             (int, int): (start, end) if buffer contains pattern, otherwise raises ValueError.
 
         Raises:

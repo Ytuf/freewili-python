@@ -717,8 +717,20 @@ class FreeWiliSerial:
         self._empty_all()
         cmd = f"w\n{file_name}"
         self.serial_port.send(cmd)
-        resp = self._wait_for_response_frame()
-        return resp
+        match self._wait_for_response_frame(2.0):
+            case Ok(resp):
+                return Ok(resp.response)
+            case Err(msg):
+                msg = f"{msg}:\nIs there already a script running?"
+                try:
+                    data = self.serial_port.data_queue.get_nowait()
+                    output = data.decode("utf-8", errors="replace")
+                    msg += output
+                    return Err(msg)
+                except queue.Empty:
+                    return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
 
     @needs_open()
     def load_fpga_from_file(self, file_name: str) -> Result[str, str]:

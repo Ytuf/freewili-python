@@ -70,12 +70,12 @@ class FreeWili:
         """Get the USBDevice by ProcessorType.
 
         Parameters:
-        ----------
+        ------------
             processor_type: FreeWiliProcessorType
                 Type of processor to get.
 
         Returns:
-        -------
+        ---------
             None | fwf.USBDevice:
                 fwf.USBDevice if successful, None otherwise.
 
@@ -157,7 +157,7 @@ class FreeWili:
             None
 
         Returns:
-        --------
+        ---------
             None | FreeWiliSerial:
                 FreeWiliSerial on success, None otherwise.
         """
@@ -176,7 +176,7 @@ class FreeWili:
             None
 
         Returns:
-        --------
+        ---------
             None | FreeWiliSerial:
                 FreeWiliSerial on success, None otherwise.
         """
@@ -195,7 +195,7 @@ class FreeWili:
                 Processor type to get serial port for.
 
         Returns:
-        --------
+        ---------
             Result[FreeWiliSerial, str]:
                 Ok(FreeWiliSerial) on success, Err(str) otherwise.
         """
@@ -237,7 +237,7 @@ class FreeWili:
                 number of seconds to wait when blocking.
 
         Returns:
-        -------
+        ---------
             Result[None, str]:
                 Ok(None) if successful, Err(str) otherwise.
         """
@@ -260,7 +260,7 @@ class FreeWili:
                 Restore the menu functionality before close
 
         Returns:
-        -------
+        ---------
             None
         """
         if self.main_serial:
@@ -273,11 +273,11 @@ class FreeWili:
         """Find first Free-Wili device attached to the host.
 
         Parameters:
-        ----------
+        ------------
             None
 
         Returns:
-        -------
+        ---------
             Result[FreeWili, str]:
                 Ok(FreeWili) if successful, Err(str) otherwise.
 
@@ -298,11 +298,11 @@ class FreeWili:
         """Find all Free-Wili devices attached to the host.
 
         Parameters:
-        ----------
+        ------------
             None
 
         Returns:
-        -------
+        ---------
             tuple[FreeWili, ...]:
                 Tuple of FreeWili devices.
 
@@ -341,7 +341,7 @@ class FreeWili:
                 Size of the chunks to send in bytes. Typically this should be left at the default value.
 
         Returns:
-        -------
+        ---------
             Result[str, str]:
                 Returns Ok(str) if the command was sent successfully, Err(str) if not.
         """
@@ -386,7 +386,7 @@ class FreeWili:
                     def user_callback(msg: str) -> None
 
         Returns:
-        -------
+        ---------
             Result[str, str]:
                 Returns Ok(str) if the command was sent successfully, Err(str) if not.
         """
@@ -417,7 +417,7 @@ class FreeWili:
                 Processor to upload the file to.
 
         Returns:
-        -------
+        ---------
             Result[str, str]:
                 Ok(str) if the command was sent successfully, Err(str) if not.
         """
@@ -433,12 +433,12 @@ class FreeWili:
         """Get all the IO values.
 
         Parameters:
-        ----------
+        ------------
             processor: FreeWiliProcessorType
                 Processor to set IO on.
 
         Returns:
-        -------
+        ---------
             Result[tuple[int], str]:
                 Ok(tuple[int]) if the command was sent successfully, Err(str) if not.
         """
@@ -461,7 +461,7 @@ class FreeWili:
         """Set the state of an IO pin to high or low.
 
         Parameters:
-        ----------
+        ------------
             io : int
                 The number of the IO pin to set.
             menu_cmd : IOMenuCommand
@@ -474,7 +474,7 @@ class FreeWili:
                 Processor to set IO on.
 
         Returns:
-        -------
+        ---------
             Result[ResponseFrame, str]:
                 Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
         """
@@ -497,7 +497,7 @@ class FreeWili:
         """Set the GUI RGB LEDs.
 
         Parameters:
-        ----------
+        ------------
             io : int
                 The number of the IO pin to set.
             red : int
@@ -510,7 +510,7 @@ class FreeWili:
                 Processor to set LEDs on.
 
         Returns:
-        -------
+        ---------
             Result[ResponseFrame, str]:
                 Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
         """
@@ -528,7 +528,7 @@ class FreeWili:
         """Write I2C data.
 
         Parameters:
-        ----------
+        ------------
             address : int
                 The address to write to.
             register : int
@@ -539,7 +539,7 @@ class FreeWili:
                 Processor to use.
 
         Returns:
-        -------
+        ---------
             Result[ResponseFrame, str]:
                 Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
         """
@@ -557,7 +557,7 @@ class FreeWili:
         """Write I2C data.
 
         Parameters:
-        ----------
+        -----------
             address : int
                 The address to write to.
             register : int
@@ -568,7 +568,7 @@ class FreeWili:
                 Processor to use.
 
         Returns:
-        -------
+        ---------
             Result[str, str]:
                 Ok(str) if the command was sent successfully, Err(str) if not.
                 The str is the response from the device, typically "OK".
@@ -585,12 +585,12 @@ class FreeWili:
         """Poll I2C data.
 
         Parameters:
-        ----------
+        ------------
             processor: FreeWiliProcessorType
                 Processor to use.
 
         Returns:
-        -------
+        ---------
             Result[tuple[int, ...], str]:
                 Ok(tuple[int, ...]) if the command was sent successfully, Err(str) if not.
         """
@@ -615,7 +615,7 @@ class FreeWili:
                 Processor to use.
 
         Returns:
-        -------
+        ---------
             Result[ResponseFrame, str]:
                 Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
         """
@@ -640,7 +640,7 @@ class FreeWili:
                 Processor to use.
 
         Returns:
-        -------
+        ---------
             Result[ResponseFrame, str]:
                 Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
         """
@@ -663,7 +663,7 @@ class FreeWili:
                 Processor to use.
 
         Returns:
-        -------
+        ---------
             Result[dict[ButtonColor, bool], str]:
                 Ok(dict[ButtonColor, bool]) if the command was sent successfully, Err(str) if not.
         """
@@ -686,7 +686,7 @@ class FreeWili:
                 Processor to use.
 
         Returns:
-        -------
+        ---------
             Result[ResponseFrame, str]:
                 Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
         """
@@ -707,7 +707,7 @@ class FreeWili:
                 Processor to use.
 
         Returns:
-        -------
+        ---------
             Result[None, str]:
                 Returns Ok(None) if the command was sent successfully, Err(str) if not.
         """
@@ -738,12 +738,12 @@ class FileMap:
         """Creates a FileMap from a file extension.
 
         Parameters:
-        ----------
+        ------------
             ext: str
                 File extension (ie. ".wasm"). Not case sensitive.
 
         Returns:
-        --------
+        ---------
             FileMap
 
         Raises:
@@ -770,12 +770,12 @@ class FileMap:
         """Creates a FileMap from a file path.
 
         Parameters:
-        ----------
+        ------------
             file_name: str
                 File name (ie. "myfile.wasm"). Not case sensitive. Can contain paths.
 
         Returns:
-        --------
+        ---------
             FileMap
 
         Raises:
@@ -790,12 +790,12 @@ class FileMap:
         """Creates a file path from the file_name to upload to the FreeWili.
 
         Parameters:
-        ----------
+        ------------
             file_name: str
                 File name (ie. "myfile.wasm"). Not case sensitive. Can contain paths.
 
         Returns:
-        --------
+        ---------
             str
                 Full file path intended to be uploaded to a FreeWili
 

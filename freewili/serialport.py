@@ -49,14 +49,14 @@ class SerialPort(threading.Thread):
         See also: is_open()
 
         Parameters:
-        ----------
+        -----------
             block: bool:
                 If True, block until the serial port is opened.
             timeout_sec: float:
                 number of seconds to wait when blocking.
 
         Returns:
-        -------
+        --------
             None
 
         Raises:
@@ -87,14 +87,14 @@ class SerialPort(threading.Thread):
         See also: is_open()
 
         Parameters:
-        ----------
+        -----------
             block: bool:
                 If True, block until the serial port is closed.
             timeout_sec: float:
                 number of seconds to wait when blocking.
 
         Returns:
-        -------
+        --------
             None
 
         Raises:
@@ -118,11 +118,11 @@ class SerialPort(threading.Thread):
         """Return if the serial port is open.
 
         Parameters:
-        ----------
+        -----------
             None
 
         Returns:
-        -------
+        --------
             bool:
                 True if open, False if closed.
         """
@@ -134,11 +134,11 @@ class SerialPort(threading.Thread):
         To clear the error state, call get_error().
 
         Parameters:
-        ----------
+        -----------
             None
 
         Returns:
-        -------
+        --------
             bool:
                 True if there are errors, False otherwise.
         """
@@ -148,11 +148,11 @@ class SerialPort(threading.Thread):
         """Get the serial port error message. Clears the error state.
 
         Parameters:
-        ----------
+        -----------
             None
 
         Returns:
-        -------
+        --------
             str:
                 Error message if present, empty str otherwise.
         """
@@ -167,7 +167,7 @@ class SerialPort(threading.Thread):
         """Get the serial port descriptor.
 
         Returns:
-        -------
+        --------
             str:
                 serial port descriptor.
         """
@@ -178,7 +178,7 @@ class SerialPort(threading.Thread):
         """Get the serial port baudrate.
 
         Returns:
-        -------
+        --------
             str:
                 serial port baudrate.
         """
@@ -346,7 +346,7 @@ class SerialPort(threading.Thread):
         r"""Send data to the serial port.
 
         Parameters:
-        ----------
+        -----------
             data : bytes | str:
                 data to be sent to the serial port. If type is str it will be automatically encoded.
             append_newline : bool:
@@ -357,7 +357,7 @@ class SerialPort(threading.Thread):
                 Number of seconds to wait after sending.
 
         Returns:
-        -------
+        --------
             None
         """
         assert isinstance(data, (bytes, str))

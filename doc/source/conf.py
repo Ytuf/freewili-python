@@ -34,5 +34,17 @@ suppress_warnings = ["title-under"]
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "furo"
+html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
+
+# Configure sidebar to always show the master toctree
+html_sidebars = {"**": ["globaltoc.html", "searchbox.html"]}
+
+# RTD theme options for better navigation
+html_theme_options = {
+    "collapse_navigation": False,
+    "sticky_navigation": True,
+    "navigation_depth": 4,
+    "includehidden": True,
+    "titles_only": False,
+}

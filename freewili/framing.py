@@ -40,12 +40,12 @@ class ResponseFrame:
         """Identify if the frame value is something we can parse.
 
         Parameters:
-        ----------
+        -----------
             frame : bytes | str:
                 response frame string to decode.
 
         Returns:
-        -------
+        ---------
             bool:
                 True if is a frame, False otherwise.
         """
@@ -59,12 +59,12 @@ class ResponseFrame:
         """Identify if the frame value is something we might be able to parse when complete.
 
         Parameters:
-        ----------
+        -----------
             frame : bytes | str:
                 response frame string to decode.
 
         Returns:
-        -------
+        --------
             bool:
                 True if is a frame, False otherwise.
         """
@@ -78,14 +78,14 @@ class ResponseFrame:
         """Take a response frame string and create a ResponseFrame.
 
         Parameters:
-        ----------
+        -----------
             frame : str
                 response frame string to decode.
             strict : bool
                 allows the timestamp to be invalid.
 
         Returns:
-        -------
+        --------
             Result[ResponseFrame, str]:
                 Ok(ResponseFrame) if decoded successfully, Err(str) if not.
         """
@@ -133,11 +133,11 @@ class ResponseFrame:
         """Validates if the frame was successful.
 
         Parameters:
-        ----------
+        -----------
             None
 
         Returns:
-        -------
+        --------
             bool:
                 True if success == 1, False otherwise.
         """
@@ -147,12 +147,12 @@ class ResponseFrame:
         """Convert the response into bytes.
 
         Parameters:
-        ----------
+        -----------
             check_ok: bool
                 Calls is_ok() to make sure the frame is valid.
 
         Returns:
-        -------
+        --------
             Result[bytes, str]:
                 Ok(bytes) if valid, False if data couldn't be converted.
         """
@@ -173,12 +173,12 @@ class ResponseFrame:
         """Convert the timestamp into a datetime.
 
         Parameters:
-        ----------
+        -----------
             check_ok: bool
                 Calls is_ok() to make sure the frame is valid.
 
         Returns:
-        -------
+        --------
             Result[np.datetime64, str]:
                 Ok(np.datetime64) if valid, Err(str) if timestamp couldn't be converted.
         """

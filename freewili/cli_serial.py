@@ -20,11 +20,11 @@ def main() -> None:
     """A command line interface to list and control FreeWili boards.
 
     Parameters:
-    ----------
+    -----------
         None
 
     Returns:
-    -------
+    --------
         None
     """
     parser = argparse.ArgumentParser()
@@ -240,7 +240,14 @@ def main() -> None:
                     script_name = pathlib.Path(args.send_file[0]).name
                 else:
                     raise ValueError("No script or file name provided")
-                print(device.run_script(script_name).unwrap())
+                print(f"Running script {script_name}...")
+                match device.run_script(script_name):
+                    case Ok(msg):
+                        print(f"Successfully ran script {script_name}: {msg}")
+                    case Err(msg):
+                        print(f"Failed to run script {script_name}: {msg}")
+                    case _:
+                        raise RuntimeError("Missing case statement")
             case Err(msg):
                 exit_with_error(msg)
     if args.io is not None:

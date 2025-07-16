@@ -14,14 +14,14 @@ def exit_with_error(msg: str, exit_code: int = 1) -> None:
     """A function that prints an error message to the stderr and exits the program with a specified exit code.
 
     Parameters:
-    ----------
+    -----------
         msg: str
             The error message to be printed.
         exit_code: int, optional
             The exit code to be used when exiting the program, defaults to 1.
 
     Returns:
-    -------
+    --------
         None
     """
     print(msg, file=sys.stderr)
@@ -35,7 +35,7 @@ def get_device(
     """Get a FreeWili by index.
 
     Parameters:
-    ----------
+    -----------
         index: int
             The index to be checked.
 
@@ -43,7 +43,7 @@ def get_device(
             container of FreeWili to reference
 
     Returns:
-    -------
+    --------
         Result[FreeWili, str]:
             The FreeWili if the index is valid, otherwise an error message.
     """

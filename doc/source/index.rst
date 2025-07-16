@@ -1,4 +1,4 @@
-FreeWili
+Free-Wili
 ========
 
 .. image:: ../../logo.jpg
@@ -29,23 +29,36 @@ udev rules are required to access the Free-Wili device without root privileges.
 
 .. code-block:: bash
     :caption: /etc/udev/rules.d/99-freewili.rules
-    
+
+      # Intrepid Control System, Inc.
+      SUBSYSTEM=="usb", ATTRS{idVendor}=="093c", GROUP="users", MODE="0666"
+      KERNEL=="ttyUSB?", ATTRS{idVendor}=="093c", GROUP="users", MODE="0666"
+      KERNEL=="ttyACM?", ATTRS{idVendor}=="093c", GROUP="users", MODE="0666"
+
       # FT232H
-      SUBSYSTEM=="usb", ATTR{idVendor}=="0403", ATTR{idProduct}=="6014", GROUP="users", MODE="0777"
-
+      SUBSYSTEM=="usb", ATTR{idVendor}=="0403", ATTR{idProduct}=="6014", GROUP="users", MODE="0666"
       # RP2040 CDC
-      SUBSYSTEM=="usb", ATTR{idVendor}=="2e8a", ATTR{idProduct}=="000a", GROUP="users", MODE="0777"
-
+      SUBSYSTEM=="usb", ATTR{idVendor}=="2e8a", ATTR{idProduct}=="000a", GROUP="users", MODE="0666"
       # RP2040 UF2
-      SUBSYSTEM=="usb", ATTR{idVendor}=="2e8a", ATTR{idProduct}=="0003", GROUP="users", MODE="0777"
+      SUBSYSTEM=="usb", ATTR{idVendor}=="2e8a", ATTR{idProduct}=="0003", GROUP="users", MODE="0666"
+      # RP2350 UF2
+      SUBSYSTEM=="usb", ATTR{idVendor}=="2e8a", ATTR{idProduct}=="000f", GROUP="users", MODE="0666"
+
+
+udev rules must be reloaded after creating or modifying the rules file. Reboot or run the following commands:
+
+.. code-block:: bash
+    :caption: udev reload rules
+
+      sudo udevadm control --reload-rules
+      sudo udevadm trigger
 
 Contents
 --------
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
 
-   index
    cli
    dev
    examples
-   api
+   api/index

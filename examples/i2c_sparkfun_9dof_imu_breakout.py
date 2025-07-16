@@ -124,7 +124,7 @@ def get_mmc5983ma_temperature(device: FreeWili) -> float:
             FreeWili device to use.
 
     Returns:
-    --------
+    ---------
         tuple[float, int]:
             (Temperature in degrees Celcius, timestamp in ns).
     """
@@ -153,7 +153,7 @@ def get_mmc5983ma_magnetic_sensor(device: FreeWili) -> tuple[int, int, int]:
             FreeWili device to use.
 
     Returns:
-    --------
+    ---------
         tuple[int, int, int]:
             (x, y, z).
     """
