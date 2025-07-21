@@ -4,7 +4,7 @@ import pathlib
 import platform
 import sys
 from dataclasses import dataclass
-from typing import Callable, List
+from typing import Any, Callable, List
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -15,8 +15,8 @@ import pyfwfinder as fwf
 from result import Err, Ok, Result
 
 from freewili.framing import ResponseFrame
-from freewili.serial_util import FreeWiliSerial
-from freewili.types import ButtonColor, FreeWiliProcessorType, IOMenuCommand
+from freewili.fw_serial import FreeWiliSerial
+from freewili.types import AccelData, ButtonColor, EventType, FreeWiliProcessorType, IOMenuCommand
 
 # USB Locations:
 # first address = FTDI
@@ -60,6 +60,29 @@ class FreeWili:
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}: {self.device.serial}>"
+
+    def __enter__(self) -> Self:
+        self.open().expect("Failed to open FreeWili")
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        self.close()
+
+    def set_event_callback(self, event_cb: None | Callable[[EventType, ResponseFrame, Any], None]) -> None:
+        """Set the event callback for the FreeWili.
+
+        Parameters:
+        -----------
+            event_cb: Callable[[EventType, ResponseFrame, Any], None]
+                Callback function to be called when an event occurs.
+                The function should accept three arguments: the event type, the response frame,
+                and any additional data.
+                Set to None to disable the callback.
+        """
+        if self.main_serial:
+            self.main_serial.set_event_callback(event_cb)
+        if self.display_serial:
+            self.display_serial.set_event_callback(event_cb)
 
     @property
     def usb_devices(self) -> List[fwf.USBDevice]:
@@ -693,6 +716,153 @@ class FreeWili:
         match self.get_serial_from(processor):
             case Ok(serial):
                 return serial.reset_display()
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
+
+    def enable_accel_events(
+        self,
+        enable: bool,
+        interval_ms: int | None = None,
+        processor: FreeWiliProcessorType = FreeWiliProcessorType.Display,
+    ) -> Result[str, str]:
+        """Enable or disable acceleration events.
+
+        Arguments:
+        ----------
+            enable: bool
+                Whether to enable or disable acceleration events.
+            interval_ms: int | None
+                The interval in milliseconds for accelerometer events. If None, the default value will be used.
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        ---------
+            Result[ResponseFrame, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.enable_accel_events(enable, interval_ms)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
+
+    def enable_button_events(
+        self,
+        enable: bool,
+        interval_ms: int | None = None,
+        processor: FreeWiliProcessorType = FreeWiliProcessorType.Display,
+    ) -> Result[str, str]:
+        """Enable or disable acceleration events.
+
+        Arguments:
+        ----------
+            enable: bool
+                Whether to enable or disable acceleration events.
+            interval_ms: int | None
+                The interval in milliseconds for accelerometer events. If None, the default value will be used.
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        ---------
+            Result[ResponseFrame, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.enable_button_events(enable, interval_ms)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
+
+    def enable_ir_events(
+        self,
+        enable: bool,
+        processor: FreeWiliProcessorType = FreeWiliProcessorType.Display,
+    ) -> Result[str, str]:
+        """Enable or disable infrared events.
+
+        Arguments:
+        ----------
+            enable: bool
+                Whether to enable or disable infrared events.
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        ---------
+            Result[ResponseFrame, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.enable_ir_events(enable)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
+
+    def enable_battery_events(
+        self,
+        enable: bool,
+        processor: FreeWiliProcessorType = FreeWiliProcessorType.Display,
+    ) -> Result[str, str]:
+        """Enable or disable battery events.
+
+        Arguments:
+        ----------
+            enable: bool
+                Whether to enable or disable battery events.
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        ---------
+            Result[ResponseFrame, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.enable_battery_events(enable)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
+
+    def process_events(self) -> None:
+        """Process any events that have been received.
+
+        This is typically called in a loop to process events as they come in.
+        """
+        if self.main_serial:
+            self.main_serial.process_events()
+        if self.display_serial:
+            self.display_serial.process_events()
+
+    def get_accel_events(
+        self, processor: FreeWiliProcessorType = FreeWiliProcessorType.Display
+    ) -> Result[tuple[AccelData, ...], str]:
+        """Get the current state of acceleration events.
+
+        Arguments:
+        ----------
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        ---------
+            Result[tuple[AccelData, ...], str]:
+                Ok(tuple[AccelData, ...]) if the command was sent successfully, Err(str) if not.
+        """
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.get_accel_events()
             case Err(msg):
                 return Err(msg)
             case _:

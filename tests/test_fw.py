@@ -6,7 +6,7 @@ import time
 import pytest
 
 from freewili.fw import FileMap, FreeWili
-from freewili.serial_util import FreeWiliProcessorType
+from freewili.fw_serial import FreeWiliProcessorType
 
 
 def test_file_mappings() -> None:
@@ -85,5 +85,6 @@ if __name__ == "__main__":
         args=[
             __file__,
             "--verbose",
+            "-s",
         ]
     )
