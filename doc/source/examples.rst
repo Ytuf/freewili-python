@@ -56,3 +56,21 @@ SparkFun 9DoF IMU Breakout example over I2C.
 .. literalinclude:: ../../examples/i2c_sparkfun_9dof_imu_breakout.py
    :language: python
    :linenos:
+
+Event Handling (Console)
+-------------------------
+
+Console-based example for handling real-time events from FreeWili devices including accelerometer, button, IR, and battery events.
+
+.. literalinclude:: ../../examples/events.py
+   :language: python
+   :linenos:
+
+Event Handling (GUI)
+---------------------
+
+PySide6 GUI application for monitoring real-time FreeWili events with visual displays and controls.
+
+.. literalinclude:: ../../examples/events_gui.py
+   :language: python
+   :linenos:
