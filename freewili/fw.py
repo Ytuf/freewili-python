@@ -16,7 +16,7 @@ from result import Err, Ok, Result
 
 from freewili.framing import ResponseFrame
 from freewili.fw_serial import FreeWiliSerial
-from freewili.types import AccelData, ButtonColor, EventType, FreeWiliProcessorType, IOMenuCommand
+from freewili.types import ButtonColor, EventType, FreeWiliProcessorType, IOMenuCommand
 
 # USB Locations:
 # first address = FTDI
@@ -872,6 +872,60 @@ class FreeWili:
             case _:
                 raise RuntimeError("Missing case statement")
 
+    def enable_radio_events(
+        self,
+        enable: bool,
+        processor: FreeWiliProcessorType = FreeWiliProcessorType.Main,
+    ) -> Result[str, str]:
+        """Enable or disable radio events on currently selected radio.
+
+        Arguments:
+        ----------
+            enable: bool
+                Whether to enable or disable radio events.
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        ---------
+            Result[ResponseFrame, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.enable_radio_events(enable)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
+
+    def enable_uart_events(
+        self,
+        enable: bool,
+        processor: FreeWiliProcessorType = FreeWiliProcessorType.Main,
+    ) -> Result[str, str]:
+        """Enable or disable UART events.
+
+        Arguments:
+        ----------
+            enable: bool
+                Whether to enable or disable UART events.
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        ---------
+            Result[ResponseFrame, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.enable_uart_events(enable)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
+
     def process_events(self) -> None:
         """Process any events that have been received.
 
@@ -882,24 +936,152 @@ class FreeWili:
         if self.display_serial:
             self.display_serial.process_events()
 
-    def get_accel_events(
-        self, processor: FreeWiliProcessorType = FreeWiliProcessorType.Display
-    ) -> Result[tuple[AccelData, ...], str]:
-        """Get the current state of acceleration events.
+    def select_radio(
+        self, radio_index: int, processor: FreeWiliProcessorType = FreeWiliProcessorType.Main
+    ) -> Result[str, str]:
+        """Select the radio to use for events.
 
         Arguments:
         ----------
+            radio_index: int
+                Index of the radio to select. 1 or 2 typically.
+
             processor: FreeWiliProcessorType
                 Processor to use.
 
         Returns:
         ---------
-            Result[tuple[AccelData, ...], str]:
-                Ok(tuple[AccelData, ...]) if the command was sent successfully, Err(str) if not.
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
         """
         match self.get_serial_from(processor):
             case Ok(serial):
-                return serial.get_accel_events()
+                return serial.select_radio(radio_index)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
+
+    def set_radio_event_rssi_threshold(
+        self, rssi: int, processor: FreeWiliProcessorType = FreeWiliProcessorType.Main
+    ) -> Result[str, str]:
+        """Set the RSSI threshold for radio events.
+
+        Arguments:
+        ----------
+            rssi: int
+                RSSI threshold value to set.
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        ---------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.set_radio_event_rssi_threshold(rssi)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
+
+    def set_radio_event_sample_window(
+        self, sample_window_ms: int, processor: FreeWiliProcessorType = FreeWiliProcessorType.Main
+    ) -> Result[str, str]:
+        """Set the sample window (ms) for the specified radio.
+
+        Arguments:
+        ----------
+            sample_window_ms: int
+                Sample window value to set.
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        ---------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.set_radio_event_sample_window(sample_window_ms)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
+
+    def transmit_radio_subfile(
+        self, sub_fname: int, processor: FreeWiliProcessorType = FreeWiliProcessorType.Main
+    ) -> Result[str, str]:
+        """Transmit a subfile to the specified radio.
+
+        Arguments:
+        ----------
+            sub_fname: str
+                Name of the subfile to transmit. This should be the filename with the extension.
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        -------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.transmit_radio_subfile(sub_fname)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
+
+    def write_radio(
+        self, data: bytes, processor: FreeWiliProcessorType = FreeWiliProcessorType.Main
+    ) -> Result[str, str]:
+        """Write radio data.
+
+        Arguments:
+        ----------
+            data: bytes
+                Data to transmit.
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        -------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.write_radio(data)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
+
+    def write_uart(
+        self, data: bytes, processor: FreeWiliProcessorType = FreeWiliProcessorType.Main
+    ) -> Result[str, str]:
+        """Write uart data.
+
+        Arguments:
+        ----------
+            data: bytes
+                Data to transmit.
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        -------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.write_uart(data)
             case Err(msg):
                 return Err(msg)
             case _:

@@ -80,6 +80,52 @@ class EventDataType(object):
 
 
 @dataclass(frozen=True)
+class Radio1Data(EventDataType):
+    """Radio1 event data from Free-Wili Display."""
+
+    # [*radio1 0DF6B2ADEAE711E2 4170 29 08 db 00 8e 90 ae e0 56 72 ... 1]
+    data: bytes
+    raw: str
+
+    @classmethod
+    def from_string(cls, data: str) -> Self:
+        """Convert a string to a Radio1Data object.
+
+        Arguments:
+        ----------
+            data: str
+                The string to convert, typically from a Radio1 event.
+
+        Returns:
+        --------
+            Radio1Data:
+                The converted Radio1Data object.
+        """
+        try:
+            d: bytes = bytes([int(x, 16) for x in data.rstrip(" ").split(" ")])
+            return cls(data=d, raw=data)
+        except ValueError:
+            # " RSSI below threshold, flushing RX buffer"
+            return cls(data=b"", raw=data)
+
+
+@dataclass(frozen=True)
+class Radio2Data(Radio1Data):
+    """Radio2 event data from Free-Wili Display."""
+
+    # Inherits from Radio1Data, no additional fields or methods needed
+    pass
+
+
+@dataclass(frozen=True)
+class UART1Data(Radio1Data):
+    """UART1 event data from Free-Wili Display."""
+
+    # Inherits from Radio1Data, no additional fields or methods needed
+    pass
+
+
+@dataclass(frozen=True)
 class GPIOData(EventDataType):
     """GPIO event data from Free-Wili Display."""
 
@@ -301,6 +347,9 @@ class EventType(enum.Enum):
     Button = enum.auto()
     Battery = enum.auto()
     IR = enum.auto()
+    Radio1 = enum.auto()
+    Radio2 = enum.auto()
+    UART1 = enum.auto()
 
     def __str__(self) -> str:
         return self.name
@@ -336,6 +385,12 @@ class EventType(enum.Enum):
                 return IRData  # type: ignore[return-value]
             case self.Battery:
                 return BatteryData  # type: ignore[return-value]
+            case self.Radio1:
+                return Radio1Data  # type: ignore[return-value]
+            case self.Radio2:
+                return Radio2Data  # type: ignore[return-value]
+            case self.UART1:
+                return UART1Data  # type: ignore[return-value]
             case _:
                 return RawData  # type: ignore[return-value]
 
@@ -371,6 +426,12 @@ class EventType(enum.Enum):
                 return cls(cls.IR)
             case "battery":
                 return cls(cls.Battery)
+            case "radio1":
+                return cls(cls.Radio1)
+            case "radio2":
+                return cls(cls.Radio2)
+            case "uart1":
+                return cls(cls.UART1)
             case _:
                 return cls(cls.Unknown)
 

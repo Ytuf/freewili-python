@@ -130,6 +130,18 @@ def main() -> None:
         help="Reset the display back to the main menu.",
     )
     parser.add_argument(
+        "-ri",
+        "--radio_index",
+        nargs=1,
+        help="Select the radio. Typically 1 or 2.",
+    )
+    parser.add_argument(
+        "-rt",
+        "--radio_file",
+        nargs=1,
+        help="Transmit subfile on selected radio. Name of the file (ie. yellow.sub)",
+    )
+    parser.add_argument(
         "--version",
         action="version",
         version="%(prog)s {version}".format(version=importlib.metadata.version("freewili")),
@@ -355,6 +367,30 @@ def main() -> None:
                         exit_with_error(f"Failed to reset display {msg}")
                     case Err(msg):
                         exit_with_error(msg)
+            case Err(msg):
+                exit_with_error(msg)
+    if args.radio_index:
+        value = args.radio_index[0]
+        match get_device(device_index, devices):
+            case Ok(device):
+                print(f"Selecting radio index {value}...")
+                match device.select_radio(value):
+                    case Ok(msg):
+                        print(f"Successfully selected radio index {value}: {msg}")
+                    case Err(msg):
+                        exit_with_error(f"Failed to select radio index {value}: {msg}")
+            case Err(msg):
+                exit_with_error(msg)
+    if args.radio_file:
+        value = args.radio_file[0]
+        match get_device(device_index, devices):
+            case Ok(device):
+                print(f"Showing radio file {value}...")
+                match device.transmit_radio_subfile(value):
+                    case Ok(msg):
+                        print(f"Successfully transmitting {value}: {msg}")
+                    case Err(msg):
+                        exit_with_error(f"Failed to transmit radio file {value}: {msg}")
             case Err(msg):
                 exit_with_error(msg)
 

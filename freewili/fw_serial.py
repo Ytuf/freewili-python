@@ -785,6 +785,44 @@ class FreeWiliSerial:
         self.serial_port.send(cmd)
         return self._handle_final_response_frame()
 
+    @needs_open()
+    def enable_radio_events(self, enable: bool) -> Result[str, str]:
+        """Enable or disable radio events on currently selected radio.
+
+        Arguments:
+        ----------
+            enable: bool
+                Whether to enable or disable radio events.
+
+        Returns:
+        -------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        self._empty_all()
+        cmd = f"r\nr\n{0 if not enable else 1}"
+        self.serial_port.send(cmd)
+        return self._handle_final_response_frame()
+
+    @needs_open()
+    def enable_uart_events(self, enable: bool) -> Result[str, str]:
+        """Enable or disable UART events.
+
+        Arguments:
+        ----------
+            enable: bool
+                Whether to enable or disable UART events.
+
+        Returns:
+        -------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        self._empty_all()
+        cmd = f"u\nr\n{0 if not enable else 1}"
+        self.serial_port.send(cmd)
+        return self._handle_final_response_frame()
+
     def process_events(self, delay_sec: float | None = None) -> None:
         """Process events from the FreeWili.
 
@@ -809,7 +847,83 @@ class FreeWiliSerial:
         time.sleep(delay_sec)
 
     @needs_open()
-    def write_radio(self, data: bytes) -> Result[bytes, str]:
+    def select_radio(self, radio_index: int) -> Result[str, str]:
+        """Select the radio to use for events.
+
+        Arguments:
+        ----------
+            radio_index: int
+                Index of the radio to select.
+
+        Returns:
+        -------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        self._empty_all()
+        cmd = f"r\ns\n{radio_index}"
+        self.serial_port.send(cmd)
+        return self._handle_final_response_frame()
+
+    @needs_open()
+    def set_radio_event_rssi_threshold(self, rssi: int) -> Result[str, str]:
+        """Set the RSSI threshold for the specified radio.
+
+        Arguments:
+        ----------
+            rssi: int
+                RSSI threshold value to set.
+
+        Returns:
+        -------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        self._empty_all()
+        cmd = f"r\nt\n{rssi}"
+        self.serial_port.send(cmd)
+        return self._handle_final_response_frame()
+
+    @needs_open()
+    def set_radio_event_sample_window(self, sample_window_ms: int) -> Result[str, str]:
+        """Set the sample window (ms) for the specified radio.
+
+        Arguments:
+        ----------
+            sample_window_ms: int
+                Sample window value to set.
+
+        Returns:
+        -------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        self._empty_all()
+        cmd = f"r\nf\n{sample_window_ms}"
+        self.serial_port.send(cmd)
+        return self._handle_final_response_frame()
+
+    @needs_open()
+    def transmit_radio_subfile(self, sub_fname: str) -> Result[str, str]:
+        """Transmit a radio subfile.
+
+        Arguments:
+        ----------
+            sub_fname: str
+                Name of the subfile to transmit. This should be the filename with the extension.
+
+        Returns:
+        -------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        self._empty_all()
+        cmd = f"r\np\n{sub_fname}"
+        self.serial_port.send(cmd)
+        return self._handle_final_response_frame()
+
+    @needs_open()
+    def write_radio(self, data: bytes) -> Result[str, str]:
         """Write radio data.
 
         Parameters:
@@ -822,26 +936,14 @@ class FreeWiliSerial:
             Result[bytes, str]:
                 Ok(bytes) if the command was sent successfully, Err(str) if not.
         """
-        raise NotImplementedError("TODO")
+        self._empty_all()
+        data_str = " ".join(f"{b:02x}" for b in data)
+        cmd = f"r\np\n{data_str}"
+        self.serial_port.send(cmd)
+        return self._handle_final_response_frame()
 
     @needs_open()
-    def read_radio(self, data: bytes) -> Result[bytes, str]:
-        """Read radio data.
-
-        Parameters:
-        ----------
-            data : bytes
-                The data to write.
-
-        Returns:
-        -------
-            Result[bytes, str]:
-                Ok(bytes) if the command was sent successfully, Err(str) if not.
-        """
-        raise NotImplementedError("TODO")
-
-    @needs_open()
-    def write_uart(self, data: bytes) -> Result[bytes, str]:
+    def write_uart(self, data: bytes) -> Result[str, str]:
         """Write uart data.
 
         Parameters:
@@ -854,7 +956,11 @@ class FreeWiliSerial:
             Result[bytes, str]:
                 Ok(bytes) if the command was sent successfully, Err(str) if not.
         """
-        raise NotImplementedError("TODO")
+        self._empty_all()
+        data_str = " ".join(f"{b:02x}" for b in data)
+        cmd = f"u\nw\n{data_str}"
+        self.serial_port.send(cmd)
+        return self._handle_final_response_frame()
 
     @needs_open()
     def enable_stream(self, enable: bool) -> None:
