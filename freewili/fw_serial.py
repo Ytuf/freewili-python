@@ -1097,17 +1097,23 @@ class FreeWiliSerial:
                 Returns Ok(None) if the command was sent successfully, Err(str) if not.
         """
         self.serial_port.close()
-        try:
-            serial_port = serial.Serial(self.serial_port.port, baudrate=1200, exclusive=True)
-            serial_port.close()
-        except serial.serialutil.SerialException as ex:
-            if platform.system() == "Windows":
-                # SerialException("Cannot configure port, something went wrong.
-                # Original message:
-                # PermissionError(13, 'A device attached to the system is not functioning.', None, 31)")
-                return Ok(None)
-            return Err(f"Failed to reset to UF2 bootloader {str(ex)}")
-        return Ok(None)
+        attempts: int = 6
+        success: bool = True
+        while attempts > 0:
+            try:
+                serial_port = serial.Serial(self.serial_port.port, baudrate=1200, exclusive=True, timeout=0.100)
+                serial_port.close()
+                success = True
+                break
+            except serial.serialutil.SerialException:
+                if platform.system() == "Windows":
+                    # SerialException("Cannot configure port, something went wrong.
+                    # Original message:
+                    # PermissionError(13, 'A device attached to the system is not functioning.', None, 31)")
+                    return Ok(None)
+                attempts -= 1
+                continue
+        return Ok(None) if success else Err("Failed to reset to UF2 bootloader after multiple attempts.")
 
     def _wait_for_serial_data(self, timeout_sec: float, delay_sec: float = 0.1) -> None:
         """Wait for data to be available on the serial port.

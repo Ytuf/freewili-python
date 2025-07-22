@@ -14,7 +14,7 @@ def test_file_mappings() -> None:
     known_maps = {
         "wasm": (FreeWiliProcessorType.Main, "/scripts", "WASM binary"),
         "wsm": (FreeWiliProcessorType.Main, "/scripts", "WASM binary"),
-        "sub": (FreeWiliProcessorType.Display, "/radio", "Radio file"),
+        "sub": (FreeWiliProcessorType.Main, "/radio", "Radio file"),
         "fwi": (FreeWiliProcessorType.Display, "/images", "Image file"),
     }
 
