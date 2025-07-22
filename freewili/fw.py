@@ -964,7 +964,7 @@ class FileMap:
             "wsm": (FreeWiliProcessorType.Main, "/scripts", "WASM binary"),
             "zio": (FreeWiliProcessorType.Main, "/scripts", "ZoomIO script file"),
             "bin": (FreeWiliProcessorType.Main, "/fpga", "FPGA bin file"),
-            "sub": (FreeWiliProcessorType.Display, "/radio", "Radio file"),
+            "sub": (FreeWiliProcessorType.Main, "/radio", "Radio file"),
             "fwi": (FreeWiliProcessorType.Display, "/images", "Image file"),
             "wav": (FreeWiliProcessorType.Display, "/sounds", "Audio file"),
         }
