@@ -11,6 +11,24 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import Self
 
+# This maps the actual GPIO exposed on the connector, all others not
+# listed here are internal to the processor.
+GPIO_MAP = {
+    8: "GPIO8/UART1_Tx_OUT",
+    9: "GPIO9/UART1_Rx_IN",
+    10: "GPIO10/UART1_CTS_IN",
+    11: "GPIO11/UART1_RTS_OUT",
+    12: "GPIO12/SPI1_Rx_IN",
+    13: "GPIO13/SPI1_CS_OUT",
+    14: "GPIO14/SPI1_SCLK_OUT",
+    15: "GPIO15/SPI1_Tx_OUT",
+    16: "GPIO16/I2C0 SDA",
+    17: "GPIO17/I2C0 SCL",
+    25: "GPIO25/GPIO25_OUT",
+    26: "GPIO26/GPIO26_IN",
+    27: "GPIO27/GPIO_27_OUT",
+}
+
 
 class FreeWiliProcessorType(enum.Enum):
     """Processor type of the Free-Wili."""
@@ -59,6 +77,41 @@ class EventDataType(object):
             If the method is not implemented in the subclass.
         """
         raise NotImplementedError(f"{cls.__name__}.from_string() must be implemented in subclasses.")
+
+
+@dataclass(frozen=True)
+class GPIOData(EventDataType):
+    """GPIO event data from Free-Wili Display."""
+
+    # [*gpioIn 0DF6B2ADB5DFB0B6 6 35873723 1]
+    # raw GPIO pin states by index, 0 = low, 1 = high
+    raw: list[int]
+    # GPIO pin states with names, 0 = low, 1 = high
+    pin: dict[str, int]
+
+    @classmethod
+    def from_string(cls, data: str) -> Self:
+        """Convert a string to a GPIOData object.
+
+        Arguments:
+        ----------
+            data: str
+                The string to convert, typically from a GPIO event.
+
+        Returns:
+        --------
+            GPIOData:
+                The converted GPIOData object.
+        """
+        all_io_values = int(data, 16)
+        values = []
+        for i in range(32):
+            io_value = (all_io_values >> i) & 0x1
+            values.append(io_value)
+        pin_states = {}
+        for io_num, io_name in GPIO_MAP.items():
+            pin_states[io_name] = values[io_num]
+        return cls(raw=values, pin=pin_states)
 
 
 @dataclass(frozen=True)
@@ -271,6 +324,8 @@ class EventType(enum.Enum):
         match self:
             case self.Unknown:
                 return RawData  # type: ignore[return-value]
+            case self.GPIO:
+                return GPIOData  # type: ignore[return-value]
             case self.File:
                 return RawData  # type: ignore[return-value]
             case self.Accel:
@@ -304,7 +359,7 @@ class EventType(enum.Enum):
                 When invalid enum isn't matched against provided string value.
         """
         match value.lower():
-            case "gpio":
+            case "gpioin":
                 return cls(cls.GPIO)
             case "file":
                 return cls(cls.File)

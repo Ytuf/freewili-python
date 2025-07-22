@@ -26,24 +26,6 @@ DISPLAY_HUB_LOC_INDEX = 1
 # third address = Main
 MAIN_HUB_LOC_INDEX = 0
 
-# This maps the actual GPIO exposed on the connector, all others not
-# listed here are internal to the processor.
-GPIO_MAP = {
-    8: "GPIO8/UART1_Tx_OUT",
-    9: "GPIO9/UART1_Rx_IN",
-    10: "GPIO10/UART1_CTS_IN",
-    11: "GPIO11/UART1_RTS_OUT",
-    12: "GPIO12/SPI1_Rx_IN",
-    13: "GPIO13/SPI1_CS_OUT",
-    14: "GPIO14/SPI1_SCLK_OUT",
-    15: "GPIO15/SPI1_Tx_OUT",
-    16: "GPIO16/I2C0 SDA",
-    17: "GPIO17/I2C0 SCL",
-    25: "GPIO25/GPIO25_OUT",
-    26: "GPIO26/GPIO26_IN",
-    27: "GPIO27/GPIO_27_OUT",
-}
-
 
 class FreeWili:
     """Free-Wili device used to access FTDI and serial functionality."""
@@ -473,6 +455,31 @@ class FreeWili:
             case _:
                 raise RuntimeError("Missing case statement")
 
+    def toggle_high_speed_io(
+        self: Self,
+        enable: bool,
+        processor: FreeWiliProcessorType = FreeWiliProcessorType.Main,
+    ) -> Result[str, str]:
+        """Toggle the high-speed Bidirectional IO.
+
+        Parameters:
+        ------------
+            enable: bool
+                Whether to enable or disable high-speed IO.
+
+        Returns:
+        ---------
+            Result[ResponseFrame, str]:
+                Ok(ResponseFrame) if the command was sent successfully, Err(str) if not.
+        """
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.toggle_high_speed_io(enable)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
+
     def set_io(
         self: Self,
         io: int,
@@ -746,6 +753,36 @@ class FreeWili:
         match self.get_serial_from(processor):
             case Ok(serial):
                 return serial.enable_accel_events(enable, interval_ms)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
+
+    def enable_gpio_events(
+        self,
+        enable: bool,
+        interval_ms: int | None = None,
+        processor: FreeWiliProcessorType = FreeWiliProcessorType.Main,
+    ) -> Result[str, str]:
+        """Enable or disable GPIO events.
+
+        Arguments:
+        ----------
+            enable: bool
+                Whether to enable or disable GPIO events.
+            interval_ms: int | None
+                The interval in milliseconds for GPIO events. If None, the default value will be used.
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        ---------
+            Result[ResponseFrame, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.enable_gpio_events(enable, interval_ms)
             case Err(msg):
                 return Err(msg)
             case _:

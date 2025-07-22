@@ -338,6 +338,25 @@ class FreeWiliSerial:
                 raise RuntimeError("Missing case statement")
 
     @needs_open()
+    def toggle_high_speed_io(self, enable: bool) -> Result[str, str]:
+        """Enable or disable high-speed IO.
+
+        Arguments:
+        ----------
+            enable: bool
+                Whether to enable or disable high-speed IO.
+
+        Returns:
+        -------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        self._empty_all()
+        cmd = f"o\ne\n{0 if not enable else 1}"
+        self.serial_port.send(cmd)
+        return self._handle_final_response_frame()
+
+    @needs_open()
     def set_io(
         self: Self, io: int, menu_cmd: IOMenuCommand, pwm_freq: None | int = None, pwm_duty: None | int = None
     ) -> Result[str, str]:
@@ -677,6 +696,30 @@ class FreeWiliSerial:
             interval_ms = 100
         self._empty_all()
         cmd = f"r\no\n{0 if not enable else int(interval_ms)}"
+        self.serial_port.send(cmd)
+        return self._handle_final_response_frame()
+
+    @needs_open()
+    def enable_gpio_events(self, enable: bool, interval_ms: int | None) -> Result[str, str]:
+        """Enable or disable GPIO events.
+
+        Arguments:
+        ----------
+            enable: bool
+                Whether to enable or disable GPIO events.
+            interval_ms: int | None
+                The interval in milliseconds for GPIO events. If None, the default value will be used.
+
+        Returns:
+        -------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        if interval_ms is None:
+            # Use the default value
+            interval_ms = 100
+        self._empty_all()
+        cmd = f"o\no\n{0 if not enable else int(interval_ms)}"
         self.serial_port.send(cmd)
         return self._handle_final_response_frame()
 
