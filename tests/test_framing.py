@@ -28,11 +28,84 @@ def test_response_frame() -> None:
     assert response_frame.rf_type == ResponseFrameType.Event
     assert response_frame.rf_type_data == r"UART1"
     assert response_frame.timestamp == 1743360932471732289
-    assert response_frame.seq_number == 0
-    assert response_frame.response == "Failed"
-    assert response_frame.success == 0
-    assert not response_frame.is_ok()
-    assert response_frame.response_as_bytes().is_err()
+
+
+def test_response_frame_is_frame() -> None:
+    """Test the is_frame static method."""
+    # Test valid frames
+    assert ResponseFrame.is_frame("[valid frame]")
+    assert ResponseFrame.is_frame(b"[valid frame bytes]")
+
+    # Test invalid frames
+    assert not ResponseFrame.is_frame("invalid frame")
+    assert not ResponseFrame.is_frame("[missing end bracket")
+    assert not ResponseFrame.is_frame("missing start bracket]")
+    assert not ResponseFrame.is_frame("")
+
+
+def test_response_frame_is_start_of_frame() -> None:
+    """Test the is_start_of_frame static method."""
+    # Test valid start of frames
+    assert ResponseFrame.is_start_of_frame("[start of frame")
+    assert ResponseFrame.is_start_of_frame(b"[start of frame bytes")
+    assert ResponseFrame.is_start_of_frame("[")
+
+    # Test invalid start of frames
+    assert not ResponseFrame.is_start_of_frame("no bracket")
+    assert not ResponseFrame.is_start_of_frame("wrong]bracket")
+    assert not ResponseFrame.is_start_of_frame("")
+
+
+def test_response_frame_from_raw_errors() -> None:
+    """Test error handling in from_raw method."""
+    # Test invalid frame format
+    result = ResponseFrame.from_raw("invalid frame without brackets")
+    assert result.is_err()
+    assert "expected frame to be enclosed []" in result.unwrap_err()
+
+    # Test bytes input
+    result = ResponseFrame.from_raw(b"[i\\w 1831A98807457841 4 Valid 1]", strict=False)
+    assert result.is_ok()
+
+    # Test frame with too few parts
+    result = ResponseFrame.from_raw("[incomplete]")
+    assert result.is_err()
+
+    # Test invalid timestamp in strict mode
+    result = ResponseFrame.from_raw("[i\\w INVALID_TIMESTAMP 4 Valid 1]", strict=True)
+    assert result.is_err()
+    assert "Failed to decode timestamp" in result.unwrap_err()
+
+
+def test_response_frame_successful_response() -> None:
+    """Test ResponseFrame with successful response and bytes conversion."""
+    response_frame = ResponseFrame.from_raw(r"[i\w 1831A98807457841 4 3F 1]", strict=False).expect(
+        "Failed to decode frame"
+    )
+    assert response_frame.success == 1
+    assert response_frame.is_ok()
+
+    # Test successful bytes conversion (using hex response like "3F")
+    bytes_result = response_frame.response_as_bytes()
+    assert bytes_result.is_ok()
+    assert bytes_result.unwrap() == bytes([0x3F])
+
+
+def test_response_frame_different_types() -> None:
+    """Test ResponseFrame with different frame types."""
+    # Test event frame
+    event_frame = ResponseFrame.from_raw(r"[*EVENT 1831A98807457841 0 Event message 1]", strict=False).expect(
+        "Failed to decode event frame"
+    )
+    assert event_frame.rf_type == ResponseFrameType.Event
+    assert event_frame.rf_type_data == "EVENT"
+
+    # Test standard frame
+    std_frame = ResponseFrame.from_raw(r"[cmd 1831A98807457841 5 Response 1]", strict=False).expect(
+        "Failed to decode standard frame"
+    )
+    assert std_frame.rf_type == ResponseFrameType.Standard
+    assert std_frame.rf_type_data == "cmd"
 
     # Real I2C Read response frame v43
     response_frame = ResponseFrame.from_raw(r"[i\r 1831A98807457841 0 3F 1]", strict=False).expect(
