@@ -943,12 +943,12 @@ class FreeWiliSerial:
         return self._handle_final_response_frame()
 
     @needs_open()
-    def write_uart(self, data: bytes) -> Result[str, str]:
+    def write_uart(self, data: bytes | str) -> Result[str, str]:
         """Write uart data.
 
         Parameters:
         ----------
-            data : bytes
+            data : bytes | str
                 The data to write.
 
         Returns:
@@ -957,6 +957,9 @@ class FreeWiliSerial:
                 Ok(bytes) if the command was sent successfully, Err(str) if not.
         """
         self._empty_all()
+        assert isinstance(data, (bytes, str)), "data must be bytes or str"
+        if isinstance(data, str):
+            data = data.encode("utf-8")
         data_str = " ".join(f"{b:02x}" for b in data)
         cmd = f"u\nw\n{data_str}"
         self.serial_port.send(cmd)

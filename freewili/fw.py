@@ -1063,7 +1063,7 @@ class FreeWili:
                 raise RuntimeError("Missing case statement")
 
     def write_uart(
-        self, data: bytes, processor: FreeWiliProcessorType = FreeWiliProcessorType.Main
+        self, data: bytes | str, processor: FreeWiliProcessorType = FreeWiliProcessorType.Main
     ) -> Result[str, str]:
         """Write uart data.
 

@@ -1,19 +1,19 @@
 """Example script to handle events from FreeWili."""
 
-from typing import Any
-
 from freewili import FreeWili
 from freewili.framing import ResponseFrame
-from freewili.types import EventType
+from freewili.types import AccelData, EventDataType, EventType, GPIOData
 
 
-def event_handler(event_type: EventType, frame: ResponseFrame, data: Any) -> None:
+def event_handler(event_type: EventType, frame: ResponseFrame, data: EventDataType) -> None:
     """Handle events from FreeWili."""
     match event_type:
         case EventType.Accel:
+            data: AccelData = data  # type:ignore
             print(f"Accel Event: {data}")
         case EventType.GPIO:
-            print(f"GPIO Event: {data.raw}")
+            data: GPIOData = data  # type: ignore
+            print(f"GPIO Event: {data.raw}")  # type: ignore
         case _:
             # Handle other event types as needed
             if data:

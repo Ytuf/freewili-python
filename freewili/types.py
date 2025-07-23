@@ -54,7 +54,7 @@ class ButtonColor(enum.Enum):
     Red = enum.auto()
 
 
-class EventDataType(object):
+class EventData(object):
     """Base class for Free-Wili event data types."""
 
     @classmethod
@@ -80,7 +80,7 @@ class EventDataType(object):
 
 
 @dataclass(frozen=True)
-class Radio1Data(EventDataType):
+class Radio1Data(EventData):
     """Radio1 event data from Free-Wili Display."""
 
     # [*radio1 0DF6B2ADEAE711E2 4170 29 08 db 00 8e 90 ae e0 56 72 ... 1]
@@ -126,7 +126,7 @@ class UART1Data(Radio1Data):
 
 
 @dataclass(frozen=True)
-class GPIOData(EventDataType):
+class GPIOData(EventData):
     """GPIO event data from Free-Wili Display."""
 
     # [*gpioIn 0DF6B2ADB5DFB0B6 6 35873723 1]
@@ -161,7 +161,7 @@ class GPIOData(EventDataType):
 
 
 @dataclass(frozen=True)
-class AccelData(EventDataType):
+class AccelData(EventData):
     """Accelerometer event data from Free-Wili Display."""
 
     # [*accel 0DFEFB5DB4E34E9B 20 2g 64 -768 16448 29 84 4 1]
@@ -205,7 +205,7 @@ class AccelData(EventDataType):
 
 
 @dataclass(frozen=True)
-class ButtonData(EventDataType):
+class ButtonData(EventData):
     """Button event data from Free-Wili Display."""
 
     # [*button 0E027CA91437D2F5 7450 0 0 0 0 0 1]
@@ -241,7 +241,7 @@ class ButtonData(EventDataType):
 
 
 @dataclass(frozen=True)
-class IRData(EventDataType):
+class IRData(EventData):
     """IR event data from Free-Wili Display."""
 
     # [*irrx 0E02C19053D884DF 108 10008004 1]
@@ -272,7 +272,7 @@ class IRData(EventDataType):
 
 
 @dataclass(frozen=True)
-class RawData(EventDataType):
+class RawData(EventData):
     """Raw event data from Free-Wili Display."""
 
     value: str
@@ -295,7 +295,7 @@ class RawData(EventDataType):
 
 
 @dataclass(frozen=True)
-class BatteryData(EventDataType):
+class BatteryData(EventData):
     """Battery event data from Free-Wili Display."""
 
     vbus: float
@@ -337,6 +337,13 @@ class BatteryData(EventDataType):
         )
 
 
+# Type alias for all possible event data types
+# This allows us to use EventDataType in type hints and function signatures
+EventDataType = (
+    EventData | RawData | Radio1Data | Radio2Data | UART1Data | GPIOData | AccelData | ButtonData | IRData | BatteryData
+)
+
+
 class EventType(enum.Enum):
     """Free-Wili Event Type."""
 
@@ -354,7 +361,7 @@ class EventType(enum.Enum):
     def __str__(self) -> str:
         return self.name
 
-    def get_data_type(self) -> EventDataType:  # type: ignore[return-value]
+    def get_data_type(self) -> EventData:  # type: ignore[return-value]
         """Get the EventDataType class from this EventType.
 
         Arguments:
