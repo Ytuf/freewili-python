@@ -823,6 +823,25 @@ class FreeWiliSerial:
         self.serial_port.send(cmd)
         return self._handle_final_response_frame()
 
+    @needs_open()
+    def enable_audio_events(self, enable: bool) -> Result[str, str]:
+        """Enable or disable audio events.
+
+        Arguments:
+        ----------
+            enable: bool
+                Whether to enable or disable audio events.
+
+        Returns:
+        -------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        self._empty_all()
+        cmd = f"a\ns\n{0 if not enable else 1}"
+        self.serial_port.send(cmd)
+        return self._handle_final_response_frame()
+
     def process_events(self, delay_sec: float | None = None) -> None:
         """Process events from the FreeWili.
 
@@ -966,9 +985,127 @@ class FreeWiliSerial:
         return self._handle_final_response_frame()
 
     @needs_open()
-    def enable_stream(self, enable: bool) -> None:
-        """TODO: Docstring."""
-        raise NotImplementedError
+    def send_ir(self, data: bytes) -> Result[str, str]:
+        """Send IR data.
+
+        Notes: v54 firmware uses NEC format and is converted to an 32-bit integer.
+
+        Parameters:
+        ----------
+            data : bytes
+                The data to send. The first 4 bytes are used as the command.
+
+        Returns:
+        -------
+            Result[bytes, str]:
+                Ok(bytes) if the command was sent successfully, Err(str) if not.
+        """
+        self._empty_all()
+        assert isinstance(data, bytes), "data must be bytes"
+        data_int: int = int.from_bytes(data[:4], "big")
+        cmd = f"i\na\n{data_int}"
+        self.serial_port.send(cmd)
+        return self._handle_final_response_frame()
+
+    @needs_open()
+    def play_audio_file(self, file_name: str) -> Result[str, str]:
+        """Play an audio file on the FreeWili.
+
+        Arguments:
+        ----------
+        file_name: str
+            Name of the file in the FreeWili. 8.3 filename limit exists as of V12
+
+        Returns:
+        -------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        self._empty_all()
+        cmd = f"a\nf\n{file_name}"
+        self.serial_port.send(cmd)
+        return self._handle_final_response_frame()
+
+    @needs_open()
+    def play_audio_asset(self, asset_value: str | int) -> Result[str, str]:
+        """Play an audio asset on the FreeWili.
+
+        Arguments:
+        ----------
+        asset_value: str | int
+            The asset value to play.
+
+        Returns:
+        -------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        self._empty_all()
+        cmd = f"a\na\n{asset_value}"
+        self.serial_port.send(cmd)
+        return self._handle_final_response_frame()
+
+    @needs_open()
+    def play_audio_number_as_speech(self, value: int) -> Result[str, str]:
+        """Play an audio number as speech on the FreeWili.
+
+        Arguments:
+        ----------
+        value: int
+            The audio number to play.
+
+        Returns:
+        -------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        self._empty_all()
+        cmd = f"a\nn\n{value}"
+        self.serial_port.send(cmd)
+        return self._handle_final_response_frame()
+
+    @needs_open()
+    def play_audio_tone(self, frequency_hz: int, duration_sec: float, amplitude: float) -> Result[str, str]:
+        """Play an audio tone on the FreeWili.
+
+        Arguments:
+        ----------
+        frequency_hz: int
+            The frequency of the tone in Hertz.
+        duration_sec: float
+            The duration of the tone in seconds.
+        amplitude: float
+            The amplitude of the tone (0.0 to 1.0).
+
+        Returns:
+        -------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        self._empty_all()
+        assert isinstance(frequency_hz, int)
+        cmd = f"a\nt\n{frequency_hz} {duration_sec:.2f} {amplitude:.2f}"
+        self.serial_port.send(cmd)
+        return self._handle_final_response_frame()
+
+    @needs_open()
+    def record_audio(self, file_name: str) -> Result[str, str]:
+        """Record audio on the FreeWili.
+
+        Arguments:
+        ----------
+        file_name: str
+            Name of the file in the FreeWili. (ie. "/sounds/test.wav")
+
+        Returns:
+        -------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        self._empty_all()
+        cmd = f"a\nr\n{file_name}"
+        self.serial_port.send(cmd)
+        return self._handle_final_response_frame()
 
     @needs_open()
     def run_script(self, file_name: str) -> Result[str, str]:
@@ -1224,33 +1361,6 @@ class FreeWiliSerial:
                 continue
         return Ok(None) if success else Err("Failed to reset to UF2 bootloader after multiple attempts.")
 
-    def _wait_for_serial_data(self, timeout_sec: float, delay_sec: float = 0.1) -> None:
-        """Wait for data to be available on the serial port.
-
-        Parameters:
-        ----------
-            timeout_sec: float
-                The maximum amount of time to wait for data.
-            delay_sec: float
-                The amount of time to wait after checks for data.
-
-        Returns:
-        -------
-            None
-
-        Raises:
-        -------
-            TimeoutError
-                If the timeout is reached before data is available.
-        """
-        raise NotImplementedError("TODO")
-        # start = time.time()
-        # while self._serial.in_waiting == 0:
-        #     time.sleep(0.001)
-        #     if time.time() - start > timeout_sec:
-        #         raise TimeoutError(f"Timed out waiting for data on {self}")
-        # time.sleep(delay_sec)
-
     @needs_open()
     def get_app_info(self) -> Result[FreeWiliAppInfo, str]:
         """Detect the processor type of the FreeWili.
@@ -1277,48 +1387,3 @@ class FreeWiliSerial:
             return Ok(FreeWiliAppInfo(FreeWiliProcessorType.Display, int(version)))
         else:
             return Ok(FreeWiliAppInfo(FreeWiliProcessorType.Unknown, int(version)))
-
-        self.serial_port.send("", True, "\r\n\r\n")
-        time.sleep(3)
-        all_data = []
-        while True:
-            try:
-                data = self.serial_port.data_queue.get_nowait()
-                all_data.append(data)
-            except Empty:
-                break
-
-        self._wait_for_serial_data(3.0)
-        data = self._serial.read_all()
-        # proc_type_regex = re.compile(r"(Main|Display) Processor")
-        # match = proc_type_regex.search(data.decode())
-        # if match is None:
-        #     return Ok(FreeWiliProcessorType.Unknown)
-        # elif "Main Processor" in match.group():
-        #     return Ok(FreeWiliProcessorType.Main)
-        # elif "Display Processor" in match.group():
-        #     return Ok(FreeWiliProcessorType.Display)
-        # else:
-        #     return Err("Unknown processor type detected!")
-        line = ""
-        for line in data.decode().splitlines():
-            if "Processor" in line or "MainCPU" in line or "DisplayCPU" in line:
-                break
-        proc_type_regex = re.compile(r"(?:Main|Display)|(?:App version)|(?:\d+)")
-        results = proc_type_regex.findall(line)
-        if len(results) == 2:
-            # New firmware >= 48
-            processor = results[0]
-            version = results[1]
-        elif len(results) == 3:
-            # Legacy firmware
-            processor = results[0]
-            version = results[2]
-        else:
-            return Ok(FreeWiliAppInfo(FreeWiliProcessorType.Unknown, 0))
-        if "Main" in processor:
-            return Ok(FreeWiliAppInfo(FreeWiliProcessorType.Main, int(version)))
-        elif "Display" in processor:
-            return Ok(FreeWiliAppInfo(FreeWiliProcessorType.Display, int(version)))
-        else:
-            return Ok(FreeWiliAppInfo(FreeWiliProcessorType.Unknown, 0))

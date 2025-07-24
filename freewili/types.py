@@ -272,6 +272,31 @@ class IRData(EventData):
 
 
 @dataclass(frozen=True)
+class AudioData(EventData):
+    """Audio event data from Free-Wili Display."""
+
+    # [*audio 0E00CC80AEF767E4 6165 -956 -1192 -1296 -1276 -1268 -1260 -1136 -940 1]
+    data: list[int]
+
+    @classmethod
+    def from_string(cls, data: str) -> Self:
+        """Convert a string to an IRData object.
+
+        Arguments:
+        ----------
+            data: str
+                The string to convert, typically from an audio event.
+
+        Returns:
+        --------
+            AudioData:
+                The converted AudioData object.
+        """
+        data_int = [int(x) for x in data.split(" ")]
+        return cls(data=data_int)
+
+
+@dataclass(frozen=True)
 class RawData(EventData):
     """Raw event data from Free-Wili Display."""
 
@@ -300,8 +325,11 @@ class BatteryData(EventData):
 
     vbus: float
     vsys: float
-    ichg: float
+    vbatt: float
+    ichg: int
+    """Indicates if the battery is currently charging."""
     charging: bool
+    """True if the battery is charging, False otherwise."""
     charge_complete: bool
 
     @classmethod
@@ -322,18 +350,20 @@ class BatteryData(EventData):
         parts = data.split(" ")
         vbus = float(parts[0])
         vsys = float(parts[1])
-        ichg = float(parts[2])
-        if vbus < 1000 and vsys < 1000 and ichg < 1000:
+        vbatt = float(parts[2])
+        ichg = int(parts[3])
+        if vbus < 1000 and vsys < 1000 and vbatt < 1000:
             # v54 firmware looks like its math is off, so if everything is less than 1000, multiply by 10
             vbus *= 10.0
             vsys *= 10.0
-            ichg *= 10.0
+            vbatt *= 10.0
         return cls(
             vbus=vbus,
             vsys=vsys,
+            vbatt=vbatt,
             ichg=ichg,
-            charging=bool(int(parts[3])),
-            charge_complete=bool(int(parts[4])),
+            charging=bool(int(parts[4])),
+            charge_complete=bool(int(parts[5])),
         )
 
 
@@ -357,6 +387,7 @@ class EventType(enum.Enum):
     Radio1 = enum.auto()
     Radio2 = enum.auto()
     UART1 = enum.auto()
+    Audio = enum.auto()
 
     def __str__(self) -> str:
         return self.name
@@ -398,6 +429,8 @@ class EventType(enum.Enum):
                 return Radio2Data  # type: ignore[return-value]
             case self.UART1:
                 return UART1Data  # type: ignore[return-value]
+            case self.Audio:
+                return AudioData  # type: ignore[return-value]
             case _:
                 return RawData  # type: ignore[return-value]
 
@@ -439,6 +472,8 @@ class EventType(enum.Enum):
                 return cls(cls.Radio2)
             case "uart1":
                 return cls(cls.UART1)
+            case "audio":
+                return cls(cls.Audio)
             case _:
                 return cls(cls.Unknown)
 
