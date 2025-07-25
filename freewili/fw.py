@@ -16,7 +16,7 @@ from result import Err, Ok, Result
 
 from freewili.framing import ResponseFrame
 from freewili.fw_serial import FreeWiliSerial
-from freewili.types import ButtonColor, EventType, FreeWiliProcessorType, IOMenuCommand
+from freewili.types import ButtonColor, EventType, FileSystemContents, FreeWiliProcessorType, IOMenuCommand
 
 # USB Locations:
 # first address = FTDI
@@ -1269,6 +1269,169 @@ class FreeWili:
         match self.get_serial_from(processor):
             case Ok(serial):
                 return serial.record_audio(file_name)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
+
+    def change_directory(self, directory: str, processor: FreeWiliProcessorType) -> Result[str, str]:
+        """Change the current directory for file operations.
+
+        Arguments:
+        ----------
+            directory: str
+                The directory to change to.
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        ---------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.change_directory(directory)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
+
+    def create_directory(self, directory: str, processor: FreeWiliProcessorType) -> Result[str, str]:
+        """Create a new directory on the FreeWili.
+
+        Arguments:
+        ----------
+            directory: str
+                The directory to create.
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        ---------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.create_directory(directory)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
+
+    def remove_directory_or_file(self, dir_or_filename: str, processor: FreeWiliProcessorType) -> Result[str, str]:
+        """Remove a directory or file on the FreeWili.
+
+        Arguments:
+        ----------
+            dir_or_filename: str
+                The directory or file to remove.
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        ---------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.remove_directory_or_file(dir_or_filename)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
+
+    def create_blank_file(self, name: str, processor: FreeWiliProcessorType) -> Result[str, str]:
+        """Create a blank file on the FreeWili.
+
+        Arguments:
+        ----------
+            name: str
+                The name of the file to create.
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        ---------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.create_blank_file(name)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
+
+    def move_directory_or_file(
+        self, original_name: str, new_name: str, processor: FreeWiliProcessorType
+    ) -> Result[str, str]:
+        """Move a directory or file on the FreeWili.
+
+        Arguments:
+        ----------
+            original_name: str
+                The original name of the directory or file to move.
+            new_name: str
+                The new name of the directory or file.
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        ---------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.move_directory_or_file(original_name, new_name)
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
+
+    def format_filesystem(self, processor: FreeWiliProcessorType) -> Result[str, str]:
+        """Format the filesystem on the FreeWili.
+
+        Arguments:
+        ----------
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        ---------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.format_filesystem()
+            case Err(msg):
+                return Err(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
+
+    def list_current_directory(self, processor: FreeWiliProcessorType) -> Result[FileSystemContents, str]:
+        """List the contents of the current directory on the FreeWili.
+
+        Note: This API is currently considered experimental and may change in the future.
+
+        Arguments:
+        ----------
+            processor: FreeWiliProcessorType
+                Processor to use.
+
+        Returns:
+        -------
+            Result[FileSystemContents, str]:
+                Ok(FileSystemContents) if the command was sent successfully, Err(str) if not.
+        """
+        match self.get_serial_from(processor):
+            case Ok(serial):
+                return serial.list_current_directory()
             case Err(msg):
                 return Err(msg)
             case _:
