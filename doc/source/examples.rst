@@ -137,3 +137,12 @@ UART serial communication example for the FreeWili device.
 .. literalinclude:: ../../examples/uart.py
    :language: python
    :linenos:
+
+Filesystem Explorer
+-------------------
+
+Recursively explore and list the filesystem contents on both Display and Main processors of the FreeWili device.
+
+.. literalinclude:: ../../examples/filesystem.py
+   :language: python
+   :linenos:
