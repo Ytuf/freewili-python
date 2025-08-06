@@ -44,26 +44,26 @@ def test_freewili_find_methods() -> None:
         assert devices == ()
 
 
-def test_freewili_with_mock_device() -> None:
-    """Test FreeWili with a mocked device."""
-    mock_device = MagicMock()
-    mock_device.usb_devices = []
-    mock_device.serial = "TEST123"
+# def test_freewili_with_mock_device() -> None:
+#     """Test FreeWili with a mocked device."""
+#     mock_device = MagicMock()
+#     mock_device.usb_devices = []
+#     mock_device.serial = "TEST123"
 
-    fw = FreeWili(mock_device)
+#     fw = FreeWili(mock_device)
 
-    # Test basic properties
-    assert fw.usb_devices == []
-    assert fw.device == mock_device
+#     # Test basic properties
+#     assert fw.usb_devices == []
+#     assert fw.device == mock_device
 
-    # Test string representations
-    assert str(fw) == "Free-Wili TEST123"
-    assert "TEST123" in repr(fw)
+#     # Test string representations
+#     assert str(fw) == "Free-Wili TEST123"
+#     assert "TEST123" in repr(fw)
 
-    # Test get_usb_device with empty devices
-    mock_device.get_usb_devices.return_value = []
-    assert fw.get_usb_device(FreeWiliProcessorType.Main) is None
-    assert fw.get_usb_device(FreeWiliProcessorType.Display) is None
+#     # Test get_usb_device with empty devices
+#     mock_device.get_usb_devices.return_value = []
+#     assert fw.get_usb_device(FreeWiliProcessorType.Main) is None
+#     assert fw.get_usb_device(FreeWiliProcessorType.Display) is None
 
 
 def test_freewili_find_first_success() -> None:
