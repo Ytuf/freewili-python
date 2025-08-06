@@ -594,11 +594,14 @@ class FreeWiliSerial:
         # k) GUI Functions
         # l) Show FWI Image [pip_boy.fwi]
         self._empty_all()
-        cmd = f"g\nl\n{fwi_path}"
         if self.is_badge:
-            return Err("TODO")
-            cmd = "g\n" + cmd + "\nq\nq"
-        self.serial_port.send(cmd)
+            self.serial_port.send("g\ng", delay_sec=0.1)
+            self._handle_final_response_frame()
+            cmd = f"l\n{fwi_path}\nq\nq"
+            self.serial_port.send(cmd)
+        else:
+            cmd = f"g\nl\n{fwi_path}"
+            self.serial_port.send(cmd)
         return self._handle_final_response_frame()
 
     @needs_open()
@@ -619,9 +622,9 @@ class FreeWiliSerial:
         self._empty_all()
         cmd = "g\nt"
         if self.is_badge:
-            self.serial_port.send("g\ng")
+            self.serial_port.send("g\ng", delay_sec=0.0)
             self._handle_final_response_frame()
-            cmd = "g\nt\nq\nq"
+            cmd = "t\nq\nq"
             self.serial_port.send(cmd)
         else:
             cmd = "g\nt"
