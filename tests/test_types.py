@@ -17,8 +17,7 @@ def test_processor_type() -> None:
     assert FreeWiliProcessorType.Main.value == 1
     assert FreeWiliProcessorType.Display.value == 2
     assert FreeWiliProcessorType.FTDI.value == 3
-    assert FreeWiliProcessorType.ESP32.value == 4
-    assert FreeWiliProcessorType.Unknown.value == 5
+    assert FreeWiliProcessorType.Unknown.value == 4
 
 
 def test_processor_type_str() -> None:
@@ -26,7 +25,6 @@ def test_processor_type_str() -> None:
     assert str(FreeWiliProcessorType.Main) == "Main"
     assert str(FreeWiliProcessorType.Display) == "Display"
     assert str(FreeWiliProcessorType.FTDI) == "FTDI"
-    assert str(FreeWiliProcessorType.ESP32) == "ESP32"
     assert str(FreeWiliProcessorType.Unknown) == "Unknown"
 
 

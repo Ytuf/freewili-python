@@ -68,80 +68,81 @@ class FreeWili:
             self.display_serial.set_event_callback(event_cb)
 
     @property
+    def standalone(self) -> bool:
+        """Check if the FreeWili is a standalone device.
+
+        Returns:
+        bool:
+            True if the FreeWili is a standalone device, False otherwise.
+        """
+        return self.device.standalone
+
+    @property
+    def unique_id(self) -> int:
+        """Get the unique ID of the FreeWili device.
+
+        Returns:
+        int:
+            Unique ID of the FreeWili device.
+        """
+        return self.device.unique_id
+
+    @property
     def usb_devices(self) -> List[fwf.USBDevice]:
         """Grab all the USB devices attached to the FreeWili."""
         return self.device.usb_devices
 
-    def get_usb_device(self, processor_type: FreeWiliProcessorType) -> None | fwf.USBDevice:
-        """Get the USBDevice by ProcessorType.
-
-        Parameters:
-        ------------
-            processor_type: FreeWiliProcessorType
-                Type of processor to get.
+    @property
+    def hub(self) -> None | fwf.USBDevice:
+        """Get the Hub USB Device.
 
         Returns:
-        ---------
-            None | fwf.USBDevice:
-                fwf.USBDevice if successful, None otherwise.
-
-        Raises:
-        -------
-            None
+        None | fwf.USBDevice:
+            USB Device on success, None otherwise.
         """
-
-        def find_by_location_id(location_id: int) -> fwf.USBDevice | None:
-            """Helper function for finding USB devices by location ID."""
-            for usb_device in self.usb_devices:
-                if usb_device.kind == fwf.USBDeviceType.Hub:
-                    continue
-                if usb_device.location == location_id:
-                    return usb_device
+        try:
+            return self.device.get_hub_usb_device()
+        except Exception as _e:
             return None
 
-        match self.device.device_type:
-            case fwf.DeviceType.FreeWili:
-                if processor_type == FreeWiliProcessorType.Main:
-                    return find_by_location_id(1)
-                elif processor_type == FreeWiliProcessorType.Display:
-                    return find_by_location_id(2)
-                elif processor_type == FreeWiliProcessorType.FTDI:
-                    return find_by_location_id(3)
-                else:
-                    return None
-            case (
-                fwf.DeviceType.DefCon2024Badge
-                | fwf.DeviceType.DefCon2025FwBadge
-                | fwf.DeviceType.Winky
-                | fwf.DeviceType.UF2
-            ):
-                # We only ever have one device on stand-alone devices.
-                if processor_type == FreeWiliProcessorType.Main:
-                    return self.usb_devices[0]
-                else:
-                    return None
-            case _:
-                raise NotImplementedError(f"Device Type {self.device.device_type} is not supported")
-
     @property
-    def ftdi(self) -> None | fwf.USBDevice:
-        """Get FTDI processor."""
-        return self.get_usb_device(FreeWiliProcessorType.FTDI)
+    def fpga(self) -> None | fwf.USBDevice:
+        """Get the FPGA USB Device.
+
+        Returns:
+        None | fwf.USBDevice:
+            USB Device on success, None otherwise.
+        """
+        try:
+            return self.device.get_fpga_usb_device()
+        except Exception as _e:
+            return None
 
     @property
     def main(self) -> None | fwf.USBDevice:
-        """Get Main processor."""
-        return self.get_usb_device(FreeWiliProcessorType.Main)
+        """Get the Main USB Device.
+
+        Returns:
+        None | fwf.USBDevice:
+            USB Device on success, None otherwise.
+        """
+        try:
+            return self.device.get_main_usb_device()
+        except Exception as _e:
+            return None
 
     @property
     def display(self) -> None | fwf.USBDevice:
-        """Get Display processor."""
-        return self.get_usb_device(FreeWiliProcessorType.Display)
+        """Get the Display USB Device.
 
-    @property
-    def esp32(self) -> None | fwf.USBDevice:
-        """Get Display processor."""
-        return self.get_usb_device(FreeWiliProcessorType.ESP32)
+        Returns:
+        None | fwf.USBDevice:
+            USB Device on success, None otherwise.
+        """
+        try:
+            return self.device.get_display_usb_device()
+        except Exception as _e:
+            return None
 
     @property
     def main_serial(self) -> None | FreeWiliSerial:
@@ -156,14 +157,13 @@ class FreeWili:
             None | FreeWiliSerial:
                 FreeWiliSerial on success, None otherwise.
         """
-        is_badge: bool = False
-        if self.main and self.device.device_type in (fwf.DeviceType.DefCon2024Badge, fwf.DeviceType.DefCon2025FwBadge):
-            is_badge = True
-        if not self._main_serial and self.main and self.main.port:
-            self._main_serial = FreeWiliSerial(self.main.port, self._stay_open, "Main: " + str(self), is_badge)
         if self._main_serial:
-            self._main_serial.stay_open = self._stay_open
-        return self._main_serial
+            return self._main_serial
+        elif self.main and self.main.port:
+            self._main_serial = FreeWiliSerial(self.main.port, self._stay_open, "Main: " + str(self), self.standalone)
+            return self._main_serial
+        else:
+            return None
 
     @property
     def display_serial(self) -> None | FreeWiliSerial:
@@ -178,11 +178,15 @@ class FreeWili:
             None | FreeWiliSerial:
                 FreeWiliSerial on success, None otherwise.
         """
-        if not self._display_serial and self.display and self.display.port:
-            self._display_serial = FreeWiliSerial(self.display.port, self._stay_open, "Display: " + str(self))
         if self._display_serial:
-            self._display_serial.stay_open = self._stay_open
-        return self._display_serial
+            return self._display_serial
+        elif self.display and self.display.port:
+            self._display_serial = FreeWiliSerial(
+                self.display.port, self._stay_open, "Display: " + str(self), self.standalone
+            )
+            return self._display_serial
+        else:
+            return None
 
     def get_serial_from(self, processor_type: FreeWiliProcessorType) -> Result[FreeWiliSerial, str]:
         """Get FreeWiliSerial from processor type.
@@ -197,14 +201,6 @@ class FreeWili:
             Result[FreeWiliSerial, str]:
                 Ok(FreeWiliSerial) on success, Err(str) otherwise.
         """
-        if self.device.device_type in (fwf.DeviceType.DefCon2024Badge, fwf.DeviceType.DefCon2025FwBadge):
-            if processor_type in (FreeWiliProcessorType.Main, FreeWiliProcessorType.Display):
-                if self.main_serial:
-                    return Ok(self.main_serial)
-                else:
-                    return Err("Main serial isn't valid")
-            else:
-                return Err(f"{processor_type} isn't a valid FreeWiliSerial type")
         match processor_type:
             case FreeWiliProcessorType.Main:
                 if self.main_serial:
@@ -214,23 +210,10 @@ class FreeWili:
             case FreeWiliProcessorType.Display:
                 if self.display_serial:
                     return Ok(self.display_serial)
+                elif self.standalone:
+                    return self.get_serial_from(FreeWiliProcessorType.Main)
                 else:
                     return Err("Display serial isn't valid")
-            case _:
-                return Err(f"{processor_type} isn't a valid FreeWiliSerial type")
-
-    @property
-    def stay_open(self) -> bool:
-        """Keep serial port open, if True.
-
-        Returns:
-            bool
-        """
-        return self._stay_open
-
-    @stay_open.setter
-    def stay_open(self, value: bool) -> None:
-        self._stay_open = value
 
     def open(self, block: bool = True, timeout_sec: float = 6.0) -> Result[None, str]:
         """Open the serial port. Use in conjunction with stay_open.
@@ -1725,16 +1708,3 @@ class FileMap:
         if platform.system().lower() == "windows":
             fpath_str = fpath_str.replace("\\", "/")
         return fpath_str
-
-
-if __name__ == "__main__":
-    devices = FreeWili.find_all()
-    print(f"Found {len(devices)} Free-Wili(s):")
-    for i, dev in enumerate(devices):
-        print(f"{i}. {dev}")
-        ftdi = dev.ftdi
-        main = dev.main
-        display = dev.display
-        print("\tFTDI:   ", ftdi)  # type: ignore
-        print("\tMain:   ", main)  # type: ignore
-        print("\tDisplay:", display)  # type: ignore

@@ -172,23 +172,28 @@ def main() -> None:
                 return
             print(f"\t\tName: {usb_device.name} Serial: {usb_device.serial}")
             print(f"\t\tVID: 0x{usb_device.vid:04X} PID: 0x{usb_device.pid:04X}")
-            print(f"\t\tUSB Location: {usb_device.location}")
+            print(f"\t\tUSB Location: {usb_device.location} ({usb_device.port_chain})")
             print(f"\t\tKind: {usb_device.kind.name}")
             if usb_device.port:
                 print(f"\t\tSerial Port: {usb_device.port}")
             if usb_device.paths:
                 print(f"\t\tPaths: {' '.join(usb_device.paths)}")
             if serial:
+                match serial.open():
+                    case Ok(_):
+                        pass
+                    case Err(msg):
+                        print(f"\t\tFailed to open serial: {msg}")
                 match serial.get_app_info():
                     case Ok(app_info):
                         print(f"\t\tApp Info: {app_info.processor_type} v{app_info.version}")
                     case Err(msg):
                         print(f"\t\tApp Info: {msg}")
+                serial.close()
 
         print(f"Found {len(devices)} FreeWili(s)")
         for i, free_wili in enumerate(devices, start=1):
             try:
-                free_wili.stay_open = True
                 print(f"{i}. {free_wili}")
                 if free_wili.main:
                     print_usb(1, "Main", free_wili.main)
@@ -196,12 +201,9 @@ def main() -> None:
                 if free_wili.display:
                     print_usb(2, "Display", free_wili.display)
                     print_verbose(free_wili.display, free_wili.display_serial)
-                if free_wili.ftdi:
-                    print_usb(3, "FPGA", free_wili.ftdi)
-                    print_verbose(free_wili.ftdi)
-                if free_wili.esp32:
-                    print_usb(4, "ESP32", free_wili.esp32)
-                    print_verbose(free_wili.esp32)
+                if free_wili.fpga:
+                    print_usb(3, "FPGA", free_wili.fpga)
+                    print_verbose(free_wili.fpga, None)
             finally:
                 free_wili.close()
     if args.send_file:

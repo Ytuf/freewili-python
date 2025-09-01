@@ -10,7 +10,7 @@ dependencies = [
     "typing-extensions == 4.12.2",
     "result == 0.17.0",
     "numpy>=2.2.4",
-    "pyfwfinder==0.3.0",
+    "pyfwfinder==0.4.0",
 ]
 
 name = "freewili"
@@ -60,6 +60,7 @@ publish-url = "https://test.pypi.org/legacy"
 
 [tool.uv.sources]
 result = { git = "https://github.com/montasaurus/result" }
+# pyfwfinder = { path = "../freewili-finder" }
 
 [project.scripts]
 fwi-serial = "freewili.cli_serial:main"

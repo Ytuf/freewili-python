@@ -36,7 +36,6 @@ class FreeWiliProcessorType(enum.Enum):
     Main = enum.auto()
     Display = enum.auto()
     FTDI = enum.auto()
-    ESP32 = enum.auto()
     Unknown = enum.auto()
 
     def __str__(self) -> str:
