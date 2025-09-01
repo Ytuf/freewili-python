@@ -51,6 +51,11 @@ class FreeWili:
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, FreeWili):
+            return False
+        return self.device == value.device
+
     def set_event_callback(self, event_cb: None | Callable[[EventType, ResponseFrame, Any], None]) -> None:
         """Set the event callback for the FreeWili.
 

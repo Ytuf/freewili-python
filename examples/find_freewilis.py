@@ -17,4 +17,4 @@ for i, free_wili in enumerate(devices, start=1):
     print(f"{i}. {free_wili}")
     print(f"\t{free_wili.main}")
     print(f"\t{free_wili.display}")
-    print(f"\t{free_wili.ftdi}")
+    print(f"\t{free_wili.fpga}")
