@@ -1,107 +1,115 @@
 """Serial Port Reader/Writer."""
 
+import logging
+import os
 import queue
 import threading
 import time
 from queue import Queue
-from threading import Lock
 from typing import Any
 
 from result import Err, Ok, Result
 from serial import Serial, SerialException
 
-from freewili.framing import ResponseFrame
+from freewili.frame_parser import FrameParser, FrameParserArgs
+from freewili.safe_response_frame_dict import SafeResponseFrameDict
 from freewili.util.fifo import SafeIOFIFOBuffer
 
+# Add custom TRACE level (more verbose than DEBUG)
+TRACE = 5
+logging.addLevelName(TRACE, "TRACE")
 
-class SafeDict:  # noqa: D101
-    """A thread-safe dictionary implementation.
 
-    This class provides a dictionary-like interface with thread safety
-    using a lock to protect all dictionary operations.
+def trace(self: logging.Logger, message: str, *args: Any, **kwargs: Any) -> None:
+    """Log a message with severity 'TRACE'."""
+    if self.isEnabledFor(TRACE):
+        self._log(TRACE, message, args, **kwargs)
+
+
+logging.Logger.trace = trace  # type: ignore[attr-defined]
+
+# Record program start time for elapsed time logging
+_program_start_time = time.time()
+
+
+class ElapsedTimeFormatter(logging.Formatter):
+    """Custom formatter that shows elapsed milliseconds from program start."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        """Format log record with elapsed milliseconds from program start."""
+        elapsed_ms = (record.created - _program_start_time) * 1000
+        record.elapsed_ms = f"{elapsed_ms:8.1f}ms"
+        return super().format(record)
+
+
+def enable_trace_logging() -> None:
+    """Enable TRACE level logging by adding trace() method to logging.Logger.
+
+    This modifies the logging.Logger class globally. Call this function explicitly
+    if you want to use logger.trace() calls throughout your application.
+
+    Example:
+        from freewili.serialport import enable_trace_logging
+        enable_trace_logging()
+        logger.trace("Very verbose message")
     """
 
-    def __init__(self) -> None:
-        self._lock = Lock()
-        self._dict: dict[Any, Any] = {}
+    def trace(self: logging.Logger, message: str, *args: Any, **kwargs: Any) -> None:
+        """Log a message with severity 'TRACE'."""
+        if self.isEnabledFor(TRACE):
+            self._log(TRACE, message, args, **kwargs)
 
-    def __len__(self) -> int:
-        with self._lock:
-            return len(self._dict)
-
-    def __iter__(self) -> Any:
-        with self._lock:
-            return iter(dict(self._dict))
-
-    def __contains__(self, key: Any) -> bool:
-        with self._lock:
-            return key in self._dict
-
-    def get(self, key: Any, default: Any = None) -> Any:  # noqa: D102
-        with self._lock:
-            return self._dict.get(key, default)
-
-    def items(self) -> list[tuple[Any, Any]]:  # noqa: D102
-        with self._lock:
-            return list(self._dict.items())
-
-    def values(self) -> list[Any]:  # noqa: D102
-        with self._lock:
-            return list(self._dict.values())
-
-    def keys(self) -> list[Any]:  # noqa: D102
-        with self._lock:
-            return list(self._dict.keys())
-
-    def clear(self) -> None:  # noqa: D102
-        with self._lock:
-            self._dict.clear()
-
-    def update(self, *args: Any, **kwargs: Any) -> None:  # noqa: D102
-        with self._lock:
-            self._dict.update(*args, **kwargs)
-
-    def setdefault(self, key: Any, default: Any = None) -> Any:  # noqa: D102
-        with self._lock:
-            return self._dict.setdefault(key, default)
-
-    def __getitem__(self, key: Any) -> Any:
-        with self._lock:
-            return self._dict[key]
-
-    def __setitem__(self, key: Any, value: Any) -> None:
-        with self._lock:
-            self._dict[key] = value
-
-    def __delitem__(self, key: Any) -> None:
-        with self._lock:
-            del self._dict[key]
-
-    def pop(self, key: Any) -> Any:  # noqa: D102
-        """Remove and return the value for the given key if it exists."""
-        with self._lock:
-            return self._dict.pop(key, None)
+    logging.Logger.trace = trace  # type: ignore[attr-defined]
 
 
-class SafeResponseFrameDict(SafeDict):
-    """A thread-safe dictionary for response frames."""
+def configure_logging(log_level: str | None = None) -> None:
+    """Configure root logger with elapsed time formatting.
 
-    def __init__(self) -> None:
-        super().__init__()
+    This function is called automatically when the module is imported,
+    using the PYFW_LOG_LEVEL environment variable. You can also call
+    it explicitly to change the log level at runtime.
 
-    def add(self, rf: ResponseFrame) -> None:
-        """Add a ResponseFrame to the container."""
-        """Add an item to the queue."""
-        assert isinstance(rf, ResponseFrame), "Expected a ResponseFrame instance"
-        self.setdefault(rf.rf_type_data, []).append(rf)
+    Parameters:
+    -----------
+        log_level : str | None
+            Log level to set. Can be 'trace', 'debug', 'info', 'warning', 'error'.
+            If None, reads from PYFW_LOG_LEVEL environment variable.
+            Defaults to 'warning' if not specified.
+
+    Example:
+        from freewili.serialport import configure_logging
+        configure_logging('debug')  # Change log level at runtime
+    """
+    if log_level is None:
+        log_level = os.getenv("PYFW_LOG_LEVEL", "warning").lower()
+    else:
+        log_level = log_level.lower()
+
+    root_logger = logging.getLogger()
+    if log_level == "trace":
+        root_logger.setLevel(TRACE)
+    elif log_level == "debug":
+        root_logger.setLevel(logging.DEBUG)
+    elif log_level == "info":
+        root_logger.setLevel(logging.INFO)
+    elif log_level == "error":
+        root_logger.setLevel(logging.ERROR)
+    else:
+        root_logger.setLevel(logging.WARNING)
+
+    # Ensure we have a handler with the right format
+    if not root_logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(ElapsedTimeFormatter("[%(elapsed_ms)s] %(levelname)-5s %(name)s: %(message)s"))
+        root_logger.addHandler(handler)
 
 
 class SerialPort(threading.Thread):
     """Read/Write data to a serial port."""
 
     def __init__(self, port: str, baudrate: int = 1000000, name: str = ""):
-        self._debug_enabled = False
         self._name = name
+        self.logger = logging.getLogger(f"SerialPort.{port}.{name}" if name else f"SerialPort.{port}")
         super().__init__(daemon=True, name=f"Thread-SerialPort-{port}-{name}")
         self._port = port
         self._baudrate = baudrate
@@ -119,6 +127,18 @@ class SerialPort(threading.Thread):
         self.rf_events: SafeResponseFrameDict = SafeResponseFrameDict()
         # data other than a response frame
         self.data_queue: Queue = Queue()
+
+        # Initialize the frame parser
+        self.frame_parser = FrameParser(
+            FrameParserArgs(
+                data_buffer=SafeIOFIFOBuffer(blocking=False),
+                rf_queue=self.rf_queue,
+                rf_event_queue=self.rf_event_queue,
+                rf_events=self.rf_events,
+                data_queue=self.data_queue,
+            ),
+            logger=self.logger,
+        )
 
         self.start()
 
@@ -270,7 +290,7 @@ class SerialPort(threading.Thread):
 
     def run(self) -> None:
         """Thread handler function. Call Self.start() to initialize."""
-        self._debug_print(f"Started {self._port}...\n")
+        self.logger.debug(f"Started {self._port}...")
         serial_port: None | Serial = None
         # read_buffer_data: bytearray = bytearray()
         # read_buffer = io.BytesIO()
@@ -286,7 +306,7 @@ class SerialPort(threading.Thread):
                     # We are allowed to connect
                     if not serial_port:
                         try:
-                            self._debug_print(f"[{time.time() - start_time:.3f}] Opening {self._port}...\n")
+                            self.logger.debug(f"[{time.time() - start_time:.3f}] Opening {self._port}...")
                             serial_port = Serial(
                                 self._port,
                                 baudrate=self._baudrate,
@@ -310,14 +330,14 @@ class SerialPort(threading.Thread):
                 else:
                     # We are allowed to disconnect
                     if serial_port and self.send_queue.empty():
-                        self._debug_print(f"[{time.time() - start_time:.3f}] Closing {self._port}...\n")
+                        self.logger.debug(f"[{time.time() - start_time:.3f}] Closing {self._port}...")
                         serial_port.close()
                         serial_port = None
                         self._is_connected = False
                         continue
                     elif serial_port and not self.send_queue.empty():
-                        self._debug_print(
-                            f"[{time.time() - start_time:.3f}] Send queue not empty yet, waiting to close port...\n"
+                        self.logger.debug(
+                            f"[{time.time() - start_time:.3f}] Send queue not empty yet, waiting to close port..."
                         )
                     else:
                         # serial_port isn't valid here, tight loop back to the beginning.
@@ -327,33 +347,35 @@ class SerialPort(threading.Thread):
                 try:
                     send_data, delay_sec = self.send_queue.get_nowait()
                     if not serial_port or not serial_port.is_open:
-                        self._debug_print(
+                        self.logger.error(
                             f"[{time.time() - start_time:.3f}] ERROR: Attempted to write but serial port is not open."
                         )
                         self.send_queue.task_done()
                         continue
-                    # self._debug_print(f"[{time.time() - start_time:.3f}] sending: ", send_data, self._port)
+                    self.logger.trace(f"[{time.time() - start_time:.3f}] sending: {send_data!r} {self._port}")  # type: ignore[attr-defined]
                     write_len = serial_port.write(send_data)
-                    # self._debug_print(f"[{time.time() - start_time:.3f}]: Delaying for {delay_sec:.3f} seconds...")
+                    self.logger.trace(f"[{time.time() - start_time:.3f}]: Delaying for {delay_sec:.3f} seconds...")  # type: ignore[attr-defined]
                     time.sleep(delay_sec)
                     self.send_queue.task_done()
                     if len(send_data) != write_len:
-                        self._debug_print(f"[{time.time() - start_time:.3f}] ERROR: send_data != write_len")
+                        self.logger.error(f"[{time.time() - start_time:.3f}] ERROR: send_data != write_len")
                     assert len(send_data) == write_len, f"{len(send_data)} != {write_len}"
                 except queue.Empty:
                     pass
                 # Read data
                 if serial_port and serial_port.is_open and serial_port.in_waiting > 0:
-                    # self._debug_print(f"[{time.time() - start_time:.3f}] Reading {serial_port.in_waiting}...")
+                    self.logger.trace(f"[{time.time() - start_time:.3f}] Reading {serial_port.in_waiting}...")  # type: ignore[attr-defined]
                     data = serial_port.read(4096)
                     if data != b"":
                         read_buffer.write(data)
-                        # self._debug_print(f"[{time.time() - start_time:.3f}] RX: ", repr(data), len(data))
-                    # self._debug_print("handle data...")
-                self._handle_data(read_buffer)
+                        self.logger.trace(f"[{time.time() - start_time:.3f}] RX: {data!r} {len(data)}")  # type: ignore[attr-defined]
+                    self.logger.trace("handle data...")  # type: ignore[attr-defined]
+                # Process data through frame parser
+                self.frame_parser.args.data_buffer.write(read_buffer.readall())
+                self.frame_parser.parse()
             except Exception as ex:
                 self._error_msg = str(ex)
-                self._debug_print(f"Exception: {type(ex)}: {self._error_msg}")
+                self.logger.error(f"Exception: {type(ex)}: {self._error_msg}")
                 self._in_error.set()
                 if serial_port and serial_port.is_open:
                     serial_port.close()
@@ -362,130 +384,16 @@ class SerialPort(threading.Thread):
         if serial_port:
             serial_port.close()
         self._is_connected = False
-        self._debug_print("Done.")
-
-    def _debug_print(self, *args: Any, **kwargs: Any) -> None:
-        if self._debug_enabled:
-            print(*args, **kwargs)
+        self.logger.debug("Done.")
 
     _debug_count: int = 0
-
-    def _handle_data(self, data_buffer: SafeIOFIFOBuffer) -> None:
-        assert isinstance(data_buffer, SafeIOFIFOBuffer)
-        if data_buffer.available() == 0:
-            return
-        
-        # First, try to match complete response frames (these have specific patterns)
-        # Match a full event response frame: [*...number]\r?\n
-        while frame := data_buffer.pop_first_match(rb"\[\*.*\d\]\r?\n"):
-            self._debug_print(f"RX Event Frame: {frame!r}")
-            rf_result = ResponseFrame.from_raw(frame)
-            if rf_result.is_ok():
-                self.rf_events.add(rf_result.unwrap())
-            self.rf_event_queue.put(rf_result)
-            self._debug_count = 0
-            
-        # Match a full response frame: [letter/command...number]\r?\n  
-        while frame := data_buffer.pop_first_match(rb"\[[a-zA-Z][^\]]*\d\]\r?\n"):
-            self._debug_print(f"RX Frame: {frame!r}")
-            self.rf_queue.put(ResponseFrame.from_raw(frame))
-            self._debug_count = 0
-        
-        # After removing all complete frames, handle remaining data in the buffer
-        data_len = data_buffer.available()
-        if data_len == 0:
-            return
-            
-        # Look at the beginning of the buffer to determine what to do
-        peek_size = min(data_len, 100)
-        data = data_buffer.peek(peek_size)
-        
-        # Check for partial frame patterns at the very beginning
-        if data.startswith(b'['):
-            # Look for common frame start patterns
-            frame_patterns = [
-                rb'\[\*',  # Event frame start like [*filedl...]
-                rb'\[[a-zA-Z]',  # Command response frame start like [u...]
-            ]
-            
-            is_likely_frame_start = any(data.startswith(pattern) for pattern in frame_patterns)
-            
-            if is_likely_frame_start:
-                # Look for the end of this potential frame
-                frame_end_found = False
-                try:
-                    # Look for frame end patterns
-                    end_pos = data.find(b']\r\n')
-                    if end_pos == -1:
-                        end_pos = data.find(b']\n')
-                    
-                    if end_pos != -1:
-                        frame_end_found = True
-                    elif data_len < 200:  # Small buffer, might be incomplete frame
-                        return  # Wait for more data
-                    # If large buffer but no frame end, treat as binary data
-                except:
-                    is_likely_frame_start = False
-                    
-                if not frame_end_found and data_len > 200:
-                    is_likely_frame_start = False
-                    
-            if not is_likely_frame_start:
-                # This '[' is probably binary data, not a frame start
-                # Find the next potential real frame or take a reasonable chunk
-                next_frame_pos = -1
-                search_limit = min(data_len, 2048)  # Don't search too far
-                
-                for i in range(1, search_limit):
-                    # Look for patterns that are very likely to be real frame starts
-                    if i + 1 < search_limit:
-                        two_byte_pattern = data[i:i+2]
-                        if two_byte_pattern in [b'[*', b'[u', b'[f', b'[g', b'[i', b'[o', b'[s']:
-                            # Additional validation - check if this looks like a real frame
-                            remaining = data[i:i+50] if i+50 < data_len else data[i:]
-                            if b']' in remaining:  # Has potential frame end
-                                next_frame_pos = i
-                                break
-                
-                if next_frame_pos > 0:
-                    # Take data up to the next potential frame
-                    chunk = data_buffer.read(next_frame_pos)
-                else:
-                    # Take a reasonable chunk to avoid memory issues
-                    chunk_size = min(data_len, 8192)  # 8KB chunks for binary data
-                    chunk = data_buffer.read(chunk_size)
-                    
-                if chunk:
-                    self._debug_print(f"RX Binary Data: {len(chunk)} bytes")
-                    self.data_queue.put(chunk)
-                    self._debug_count += len(chunk)
-                return
-            else:
-                # This looks like a valid frame start, but incomplete
-                # Wait for more data if buffer is small
-                if data_len < 200:
-                    return
-        else:
-            # Data doesn't start with '[', so it's clearly binary data
-            # Take all available data
-            chunk = data_buffer.read(-1)
-            if chunk:
-                self._debug_print(f"RX Binary Data: {len(chunk)} bytes")
-                self.data_queue.put(chunk)
-                self._debug_count += len(chunk)
-            return
-            
-        # If we reach here, we have what looks like a partial frame at the start
-        # For very small buffers, wait for more data
-        if data_len <= 3:
-            return
 
     def send(
         self,
         data: bytes | str,
         append_newline: bool = True,
         newline_chars: str = "\n",
-        delay_sec: float = 0.000,
+        delay_sec: float = 0.005,
         wait: bool = True,
     ) -> None:
         r"""Send data to the serial port.
@@ -510,7 +418,7 @@ class SerialPort(threading.Thread):
             data = data.encode("ascii")
         if append_newline:
             data += newline_chars.encode("ascii")
-        self._debug_print("send:", data, delay_sec)
+        self.logger.debug(f"send: {data!r} {delay_sec}")
         self.send_queue.put((data, delay_sec))
         if wait:
             self.send_queue.join()
