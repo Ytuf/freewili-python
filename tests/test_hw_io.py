@@ -9,10 +9,7 @@ from freewili.types import IOMenuCommand
 @pytest.mark.skipif("len(FreeWili.find_all()) == 0")
 def test_hw_io() -> None:
     """Test IO on a FreeWili."""
-    device = FreeWili.find_first().expect("Failed to open")
-    device.open().expect("Failed to open)")
-
-    try:
+    with FreeWili.find_first().expect("Failed to open") as device:
         # Set IO low
         assert device.set_io(25, IOMenuCommand.Low).expect("Failed to set IO low") != ""
         # Check to make sure IO is low
@@ -25,8 +22,6 @@ def test_hw_io() -> None:
         assert device.set_io(25, IOMenuCommand.Toggle).expect("Failed to set IO high") != ""
         # Check to make suruve IO is low
         assert device.get_io().expect("Failed to get IO")[25] == 0
-    finally:
-        device.close()
 
 
 if __name__ == "__main__":

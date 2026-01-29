@@ -223,7 +223,7 @@ class FreeWiliSerial:
             self._wait_for_data(2.0, "Enter Letter:").expect("Failed to enable menu!")
             time.sleep(0.01)  # Give some time for the menu to be enabled
 
-    def _wait_for_response_frame(self, timeout_sec: float = 6.0) -> Result[ResponseFrame, str]:
+    def _wait_for_response_frame(self, timeout_sec: float = 6.0, what_msg: str = "") -> Result[ResponseFrame, str]:
         """Wait for a response frame after sending a command.
 
         Parameters:
@@ -246,7 +246,7 @@ class FreeWiliSerial:
                 pass
             if timeout_sec == 0:
                 break
-        return Err(f"Failed to read response frame in {timeout_sec} seconds")
+        return Err(f"Failed to read response frame in {timeout_sec} seconds: {what_msg}")
 
     def _wait_for_event_response_frame(self, timeout_sec: float = 6.0) -> Result[ResponseFrame, str]:
         """Wait for a response frame after sending a command.
@@ -1136,13 +1136,12 @@ class FreeWiliSerial:
         return self._handle_final_response_frame()
 
     @needs_open()
-    def run_script(self, file_name: str) -> Result[str, str]:
-        """Run a script on the FreeWili.
+    def reset_software(self) -> Result[str, str]:
+        """Soft reset the FreeWili.
 
         Arguments:
         ----------
-        file_name: str
-            Name of the file in the FreeWili. 8.3 filename limit exists as of V12
+            None
 
         Returns:
         -------
@@ -1150,6 +1149,61 @@ class FreeWiliSerial:
                 Ok(str) if the command was sent successfully, Err(str) if not.
         """
         self._empty_all()
+        time.sleep(1)
+        self.serial_port.send("z\\n\n")
+        self.serial_port.close()
+        time.sleep(3.0)
+        return Ok("Software reset command sent. Please reconnect.")
+
+    @needs_open()
+    def stop_script(self) -> Result[str, str]:
+        """Stop any running script on the FreeWili.
+
+        Arguments:
+        ----------
+            None
+
+        Returns:
+        -------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        self._empty_all()
+        # The blank after the y is required to stop all scripts
+        self.serial_port.send("y \n")
+        match self._handle_final_response_frame():
+            case Ok(resp):
+                return Ok(resp)
+            case Err(msg):
+                # As of v91 firmware the response frame reports back 0 for success
+                if msg.lower == "ok":
+                    return Ok(msg)
+                return Ok(msg)
+            case _:
+                raise RuntimeError("Missing case statement")
+
+    @needs_open()
+    def run_script(self, file_name: str, stop_first: bool) -> Result[str, str]:
+        """Run a script on the FreeWili.
+
+        Arguments:
+        ----------
+        file_name: str
+            Name of the file in the FreeWili. 8.3 filename limit exists as of V12
+
+        stop_first: bool
+            Whether to stop any running scripts before starting the new one.
+
+        Returns:
+        -------
+            Result[str, str]:
+                Ok(str) if the command was sent successfully, Err(str) if not.
+        """
+        self._empty_all()
+        if stop_first:
+            # The blank after the y is required to stop all scripts
+            self.serial_port.send("y \n")
+            self._wait_for_response_frame(2.0)
         cmd = f"w\n{file_name}"
         self.serial_port.send(cmd)
         match self._wait_for_response_frame(2.0):
@@ -1240,7 +1294,7 @@ class FreeWiliSerial:
         _user_cb_func(f"Requesting file transfer of {source_file} ({fsize} bytes) to {target_name}...")
         cmd = f"x\nf\n{target_name} {fsize} {checksum}"
         self.serial_port.send(cmd, delay_sec=0.0)
-        match self._wait_for_response_frame():
+        match self._wait_for_response_frame(what_msg=f"starting file transfer of {source_file}"):
             case Ok(rf):
                 _user_cb_func(f"Firmware response: {rf.response}")
             case Err(msg):
@@ -1252,7 +1306,7 @@ class FreeWiliSerial:
             total_sent = 0
             while chunk := f.read(chunk_size):
                 total_sent += len(chunk)
-                self.serial_port.send(chunk, False, delay_sec=0)
+                self.serial_port.send(chunk, False, delay_sec=0.0)
                 _user_cb_func(f"Sent {total_sent}/{fsize} bytes of {source_file}. {total_sent / fsize * 100:.2f}%")
                 rf_event = self._wait_for_event_response_frame(0)
                 if rf_event.is_ok():
@@ -1263,7 +1317,7 @@ class FreeWiliSerial:
             msg = f"Sent {total_sent} bytes but expected {fsize} bytes."
             _user_cb_func(msg)
             return Err(msg)
-        match self._wait_for_response_frame():
+        match self._wait_for_response_frame(what_msg=f"finalizing sent file {source_file}"):
             case Ok(rf):
                 msg = f"Sent {target_name} in {time.time() - start:.2f} seconds: {rf.response}"
                 _user_cb_func(msg)
@@ -1304,7 +1358,7 @@ class FreeWiliSerial:
         _user_cb_func("Sending command...")
         self.serial_port.send(f"x\nu\n{source_file} \n", False, delay_sec=0.1)
         _user_cb_func("Waiting for response frame...")
-        rf = self._wait_for_response_frame()
+        rf = self._wait_for_response_frame(what_msg=f"getting file {source_file}")
         if rf.is_err():
             return Err(f"Failed to get file {source_file}: {rf.err_value}")
         rf = rf.ok_value
@@ -1316,6 +1370,7 @@ class FreeWiliSerial:
         else:
             fsize = int(rf.response.split(" ")[-1])
             _user_cb_func(f"Requested file {source_file} successfully with {fsize} bytes.")
+
         _user_cb_func(f"Opening/Creating file {destination_path}")
         checksum = 0
         with open(destination_path, "wb") as f:
@@ -1334,20 +1389,29 @@ class FreeWiliSerial:
                     time.sleep(0.001)
                     continue
                 last_bytes_received = time.time()
-                count += len(data)
-                cb_timeout_byte_count += len(data)
-                if cb_timeout_byte_count >= 4096:
-                    _user_cb_func(f"Saving {source_file} {count} of {fsize} bytes. {count / fsize * 100:.2f}%")
-                    cb_timeout_byte_count = 0
-                f.write(data)
-                checksum = zlib.crc32(data, checksum)
+
+                # Only write up to fsize bytes to prevent frame data from being included
+                # When the last chunk arrives, it might contain the final CRC response frame
+                bytes_to_write = min(len(data), fsize - count)
+                if bytes_to_write > 0:
+                    chunk_to_write = data[:bytes_to_write]
+                    f.write(chunk_to_write)
+                    checksum = zlib.crc32(chunk_to_write, checksum)
+                    count += bytes_to_write
+                    cb_timeout_byte_count += bytes_to_write
+
+                    if cb_timeout_byte_count >= 4096:
+                        _user_cb_func(f"Saving {source_file} {count} of {fsize} bytes. {count / fsize * 100:.2f}%")
+                        cb_timeout_byte_count = 0
+
                 self.serial_port.data_queue.task_done()
                 rf_event = self._wait_for_event_response_frame(0)
                 if rf_event.is_ok():
                     _user_cb_func(f"Firmware response: {rf_event.ok_value.response}")
             _user_cb_func(f"Saved {source_file} {count} bytes to {destination_path}. {count / fsize * 100:.2f}%")
+
         # b'[u 0DF8213FA48CA2A3 295 success 153624 bytes 1743045997 crc 1]\r\n'
-        rf = self._wait_for_response_frame()
+        rf = self._wait_for_response_frame(6.0, what_msg=f"CRC response {source_file}")
         if rf.is_ok():
             _user_cb_func(rf.ok_value.response)
             # success 153624 bytes 1743045997 crc
@@ -1862,7 +1926,8 @@ class FreeWiliSerial:
         Arguments:
         ----------
             destination: int
-                Destination processor (0 = WILEye's SDCard, 1 = FREE-WILi's Main Filesystem, 2 = FREE-WILi's Display Filesystem)
+                Destination processor (0 = WILEye's SDCard, 1 = FREE-WILi's Main Filesystem,
+                2 = FREE-WILi's Display Filesystem)
             filename: str
                 Name of the file to save the picture as
 
@@ -1883,7 +1948,8 @@ class FreeWiliSerial:
         Arguments:
         ----------
             destination: int
-                Destination processor (0 = WILEye's SDCard, 1 = FREE-WILi's Main Filesystem, 2 = FREE-WILi's Display Filesystem)
+                Destination processor (0 = WILEye's SDCard, 1 = FREE-WILi's Main Filesystem,
+                2 = FREE-WILi's Display Filesystem)
             filename: str
                 Name of the file to save the video as
 
@@ -1951,7 +2017,7 @@ class FreeWiliSerial:
         self._empty_all()
         cmd = f"e\\c\\i {saturation}\n"
         self.serial_port.send(cmd)
-        
+
         return self._handle_final_response_frame()
 
     @needs_open()
@@ -1971,7 +2037,7 @@ class FreeWiliSerial:
         self._empty_all()
         cmd = f"e\\c\\b {brightness}\n"
         self.serial_port.send(cmd)
-        
+
         return self._handle_final_response_frame()
 
     @needs_open()
@@ -1991,7 +2057,7 @@ class FreeWiliSerial:
         self._empty_all()
         cmd = f"e\\c\\u {hue}\n"
         self.serial_port.send(cmd)
-        
+
         return self._handle_final_response_frame()
 
     @needs_open()
@@ -2011,7 +2077,7 @@ class FreeWiliSerial:
         self._empty_all()
         cmd = f"e\\c\\l {1 if enabled else 0}\n"
         self.serial_port.send(cmd)
-        
+
         return self._handle_final_response_frame()
 
     @needs_open()
@@ -2053,7 +2119,275 @@ class FreeWiliSerial:
         self._empty_all()
         cmd = f"e\\c\\y {resolution_index}\n"
         self.serial_port.send(cmd)
-        
+
+        return self._handle_final_response_frame()
+
+    @needs_open()
+    def can_transmit(self, channel: int, can_id: int, data: bytes, is_extended: bool, is_fd: bool) -> Result[str, str]:
+        """Transmit a CAN or CAN FD frame.
+
+        Arguments:
+        ----------
+            channel: int
+                CAN channel (0 or 1)
+            can_id: int
+                CAN ID (11-bit for standard, 29-bit for extended)
+            data: bytes
+                Data payload (0-64 bytes for CAN FD, 0-8 bytes for standard CAN)
+            is_extended: bool
+                True if using extended CAN ID (29-bit), False for standard (11-bit)
+            is_fd: bool
+                True if using CAN FD, False for standard CAN
+
+        Returns:
+        --------
+            Result[None, str]:
+                Ok(None) if the command was sent successfully, Err(str) if not.
+        """
+        # e, f w Channel ArbID (hex) isCANFD isXtd Bytes (hex)
+        self._empty_all()
+        data_bytes = " ".join(f"{i:02X}" for i in data)
+        cmd = f"e\\f\\w {channel} {can_id:02X} {1 if is_fd else 0} {1 if is_extended else 0} {data_bytes}\n"
+        self.serial_port.send(cmd)
+
+        return self._handle_final_response_frame()
+
+    @needs_open()
+    def can_enable_transmit_periodic(self, index: int, enabled: bool) -> Result[str, str]:
+        """Enable/Disable periodic transmission of a CAN or CAN FD frame.
+
+        Arguments:
+        ----------
+            channel: int
+                CAN channel (0 or 1)
+            index: int
+                Index of the periodic frame to enable
+            enabled: bool
+                True to enable periodic transmission, False to disable
+
+        Returns:
+        --------
+            Result[None, str]:
+                Ok(None) if the command was sent successfully, Err(str) if not.
+        """
+        # e, f, p index enable period (us) Channel ArbID (hex) isCANFD isXtd Bytes (hex)
+        self._empty_all()
+        cmd = f"e\\f\\p {index} {1 if enabled else 0}"
+        self.serial_port.send(cmd)
+
+        return self._handle_final_response_frame()
+
+    @needs_open()
+    def can_set_transmit_periodic(
+        self,
+        channel: int,
+        index: int,
+        period_us: int,
+        arb_id: int,
+        is_fd: bool,
+        is_extended: bool,
+        data: bytes,
+    ) -> Result[str, str]:
+        """Transmit a periodic CAN or CAN FD frame.
+
+        Arguments:
+        ----------
+            channel: int
+                CAN channel (0 or 1)
+            index: int
+                Index of the periodic frame to set
+            period_us: int
+                Period in microseconds. As of v87 firmware, minimum is 500 us.
+            arb_id: int
+                CAN Arbitration ID
+            is_fd: bool
+                True if using CAN FD, False for standard CAN
+            is_extended: bool
+                True if using extended CAN ID (29-bit), False for standard (11-bit)
+            data: bytes | tuple[int, ...]
+                Data payload (0-64 bytes for CAN FD, 0-8 bytes for standard CAN)
+
+        Returns:
+        --------
+            Result[None, str]:
+                Ok(None) if the command was sent successfully, Err(str) if not.
+        """
+        # e, f, p index enable period (us) Channel ArbID (hex) isCANFD isXtd Bytes (hex)
+        self._empty_all()
+        data_bytes = " ".join(f"{i:02X}" for i in data)
+        cmd = f"e\\f\\p {index} 1 {period_us} {channel} "
+        cmd += f"{arb_id:02X} {1 if is_fd else 0} {1 if is_extended else 0} {data_bytes}"
+        self.serial_port.send(cmd)
+
+        return self._handle_final_response_frame()
+
+    @needs_open()
+    def can_enable_streaming(self, channel: int, enabled: bool) -> Result[str, str]:
+        """Enable/Disable CAN or CAN FD frame streaming.
+
+        Arguments:
+        ----------
+            channel: int
+                CAN channel (0 or 1)
+            enabled: bool
+                True to enable streaming, False to disable
+
+        Returns:
+        --------
+            Result[None, str]:
+                Ok(None) if the command was sent successfully, Err(str) if not.
+        """
+        # e f o Channel enable
+        self._empty_all()
+        cmd = f"e\\f\\o {channel} {1 if enabled else 0}"
+        self.serial_port.send(cmd)
+
+        return self._handle_final_response_frame()
+
+    @needs_open()
+    def can_set_rx_filter(
+        self,
+        channel: int,
+        index: int,
+        is_extended: bool,
+        mask_id: int,
+        id: int | None,
+        mask_b0: int,
+        b0: int,
+        mask_b1: int,
+        b1: int,
+    ) -> Result[str, str]:
+        """Set a CAN or CAN FD filter.
+
+        See can_enable_rx_filter to enable/disable the filter.
+
+        Arguments:
+        ----------
+            channel: int
+                CAN channel (0 or 1)
+            index: int
+                index of the filter (0-31)
+            is_extended: bool
+                True if using extended CAN ID (29-bit), False for standard (11-bit)
+            mask_id: int
+                CAN ID (11-bit for standard, 29-bit for extended)
+            id: int
+                ID to filter on
+            mask_b0: int
+                Mask byte 0
+            b0: int
+                Byte 0
+            mask_b1: int
+                Mask byte 1
+            b1: int
+                Byte 1
+
+        Returns:
+        --------
+            Result[None, str]:
+                Ok(None) if the command was sent successfully, Err(str) if not.
+        """
+        # e f f channel (0-1), index (0-32), enable, isXTD, mskID, ID, [mskb0, b0, mskb1, b1]
+        # 0 0 0 1 1 1 1 1 1
+        self._empty_all()
+        cmd = f"e\\f\\f {channel} {index} 1 {1 if is_extended else 0} {mask_id:02X} {id:02X} "
+        cmd += f" {mask_b0:02X} {b0:02X} {mask_b1:02X} {b1:02X}"
+        self.serial_port.send(cmd)
+
+        return self._handle_final_response_frame()
+
+    @needs_open()
+    def can_enable_rx_filter(
+        self,
+        channel: int,
+        index: int,
+        enable: bool,
+    ) -> Result[str, str]:
+        """Enable or disable a CAN RX filter.
+
+        Arguments:
+        ----------
+            channel: int
+                CAN channel (0 or 1)
+            index: int
+                index of the filter (0-31)
+            enable: bool
+                True to enable the filter, False to disable
+
+        Returns:
+        --------
+            Result[None, str]:
+                Ok(None) if the command was sent successfully, Err(str) if not.
+        """
+        # e f f channel (0-1) index (0-32) enable isXTD mskID ID (opt) mskb0 b0 mskb1 b1
+        raise RuntimeError("TODO: not implemented")
+        # self._empty_all()
+        # cmd = f"e\\f\\f {channel} {index} {1 if enable else 0}"
+        # self.serial_port.send(cmd)
+
+        return self._handle_final_response_frame()
+
+    @needs_open()
+    def can_read_registers(
+        self,
+        channel: int,
+        address: int,
+        wordcount: int,
+    ) -> Result[str, str]:
+        """Read CAN registers.
+
+        Arguments:
+        ----------
+            channel: int
+                CAN channel (0 or 1)
+            address: int
+                Register address (hex)
+            wordcount: int
+                Number of words to read
+
+        Returns:
+        --------
+            Result[None, str]:
+                Ok(None) if the command was sent successfully, Err(str) if not.
+        """
+        # e f r channel (0-1) address (hex) wordcount
+        self._empty_all()
+        cmd = f"e\\f\\r {channel} {address:02X} {wordcount}"
+        self.serial_port.send(cmd)
+
+        return self._handle_final_response_frame()
+
+    @needs_open()
+    def can_write_registers(
+        self,
+        channel: int,
+        address: int,
+        bytesize: int,
+        word: int,
+    ) -> Result[str, str]:
+        """Write CAN registers.
+
+        Arguments:
+        ----------
+            channel: int
+                CAN channel (0 or 1)
+            address: int
+                Register address (hex)
+            bytesize: int
+                Bytes per word (1 or 4)
+            word: int
+                Word to write (hex)
+
+        Returns:
+        --------
+            Result[None, str]:
+                Ok(None) if the command was sent successfully, Err(str) if not.
+        """
+        # e f s channel (0-1) address (hex) bytesize (1,4) word (hex)
+        self._empty_all()
+        cmd = f"e\\f\\s {channel} {address:02X} {bytesize} {word:02X}"
+        self.serial_port.send(cmd)
+
         return self._handle_final_response_frame()
     
     @needs_open()
@@ -2071,6 +2405,6 @@ class FreeWiliSerial:
                 Ok(str) if the command was sent successfully, Err(str) if not.
         """
         self._empty_all()
-        cmd = f"n\nr\n{0 if not enable else 1}\n"
+        cmd = f"n\nr\n{0 if not enable else 1}"
         self.serial_port.send(cmd)
         return self._handle_final_response_frame()

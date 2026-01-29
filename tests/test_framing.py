@@ -170,6 +170,39 @@ def test_response_frame_different_types() -> None:
     assert response_frame.is_ok()
 
 
+def test_response_frame_start_validation() -> None:
+    """Test ResponseFrame start of frame validation."""
+    assert not ResponseFrame.is_start_of_frame("asdf[*filedl ")
+    assert ResponseFrame.is_start_of_frame("[*filedl ")
+    assert ResponseFrame.contains_start_of_frame("[*filedl ") == (True, 0)
+    assert ResponseFrame.validate_start_of_frame("[*filedl ") == (ResponseFrameType.Event, 0)
+    assert ResponseFrame.validate_start_of_frame("[i\\w ") == (ResponseFrameType.Standard, 0)
+    assert ResponseFrame.validate_start_of_frame("no frame") == (ResponseFrameType.Invalid, -1)
+
+    assert ResponseFrame.contains_start_of_frame("asdf[*filedl ") == (True, 4)
+    assert ResponseFrame.validate_start_of_frame("asdf[*filedl ") == (ResponseFrameType.Event, 4)
+    assert ResponseFrame.validate_start_of_frame("asdf[i\\w ") == (ResponseFrameType.Standard, 4)
+    assert ResponseFrame.validate_start_of_frame("no frame[asdf") == (ResponseFrameType.Invalid, -1)
+
+    assert ResponseFrame.contains_start_of_frame(r"[z\t\y 18565F820C845726 17 25 1]") == (True, 0)
+    assert ResponseFrame.validate_start_of_frame(r"[z\t\y 18565F820C845726 17 25 1]") == (ResponseFrameType.Standard, 0)
+    assert ResponseFrame.validate_start_of_frame(r"asdf[z\t\y 18565F820C845726 17 25 1]") == (
+        ResponseFrameType.Standard,
+        4,
+    )
+
+
+def test_response_frame_end_validation() -> None:
+    """Test ResponseFrame end of frame validation."""
+    assert ResponseFrame.contains_end_of_frame("]") == (True, 0)
+    assert ResponseFrame.contains_end_of_frame("asdf]extra") == (True, 4)
+    assert ResponseFrame.contains_end_of_frame("] extra") == (True, 0)
+    assert ResponseFrame.contains_end_of_frame("no end") == (False, -1)
+
+    assert ResponseFrame.contains_end_of_frame(r"[z\t\y 18565F820C845726 17 25 1]") == (True, 31)
+    assert ResponseFrame.contains_end_of_frame(r"[z\t\y 18565F820C845726 17 25 1]asdf") == (True, 31)
+
+
 if __name__ == "__main__":
     import pytest
 

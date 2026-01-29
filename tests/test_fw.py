@@ -15,8 +15,12 @@ def test_file_mappings() -> None:
     known_maps = {
         "wasm": (FreeWiliProcessorType.Main, "/scripts", "WASM binary"),
         "wsm": (FreeWiliProcessorType.Main, "/scripts", "WASM binary"),
+        "zio": (FreeWiliProcessorType.Main, "/scripts", "ZoomIO script file"),
+        "bin": (FreeWiliProcessorType.Main, "/fpga", "FPGA bin file"),
         "sub": (FreeWiliProcessorType.Main, "/radio", "Radio file"),
         "fwi": (FreeWiliProcessorType.Display, "/images", "Image file"),
+        "wav": (FreeWiliProcessorType.Display, "/sounds", "Audio file"),
+        "py": (FreeWiliProcessorType.Main, "/scripts", "rthon script"),
     }
 
     for ext, values in known_maps.items():
@@ -100,43 +104,43 @@ def test_file_map_invalid_extension() -> None:
 @pytest.mark.skipif("len(FreeWili.find_all()) == 0")
 def test_file_send_and_get() -> None:
     """Test File uploading on a FreeWili."""
-    device = FreeWili.find_first().expect("Failed to open")
-    device.open().expect("Failed to open)")
+    with FreeWili.find_first().expect("Failed to open") as device:
+        event_cb_buffer: list[str] = []
 
-    event_cb_buffer: list[str] = []
+        def event_cb(msg: str) -> None:
+            assert msg != ""
+            print("[CB]:", msg)
+            event_cb_buffer.append(msg)
 
-    def event_cb(msg: str) -> None:
-        assert msg != ""
-        print("[CB]:", msg)
-        event_cb_buffer.append(msg)
-
-    # Send File
-    start_time = time.time()
-    assert (
-        device.send_file("tests/assets/pip_boy.fwi", "/images/pip_boy.fwi", None, event_cb).expect(
-            "Failed to send file"
+        # Send File
+        start_time = time.time()
+        assert (
+            device.send_file("tests/assets/pip_boy.fwi", "/images/pip_boy.fwi", None, event_cb).expect(
+                "Failed to send file"
+            )
+            != ""
         )
-        != ""
-    )
-    elapsed = time.time() - start_time
-    assert elapsed < 10, f"File send took too long: {elapsed:.2f} seconds"
-    assert len(event_cb_buffer) > 0
-    event_cb_buffer.clear()
-    # Get File
-    start_time = time.time()
-    assert (
-        device.get_file("/images/pip_boy.fwi", "pip_boy_downloaded.fwi", None, event_cb).expect("Failed to get file.")
-        != ""
-    )
-    elapsed = time.time() - start_time
-    assert elapsed < 10, f"File send took too long: {elapsed:.2f} seconds"
-    assert len(event_cb_buffer) > 0
-    # Verify downloaded file matches original
-    with open("tests/assets/pip_boy.fwi", "rb") as f1, open("pip_boy_downloaded.fwi", "rb") as f2:
-        assert f1.read() == f2.read(), "Downloaded file does not match original file."
-    # Clean up downloaded file
-    os.remove("pip_boy_downloaded.fwi")
-    device.close()
+        elapsed = time.time() - start_time
+        assert elapsed < 10, f"File send took too long: {elapsed:.2f} seconds"
+        assert len(event_cb_buffer) > 0
+        time.sleep(1)  # Wait a moment before getting the file
+        event_cb_buffer.clear()
+        # Get File
+        start_time = time.time()
+        assert (
+            device.get_file("/images/pip_boy.fwi", "pip_boy_downloaded.fwi", None, event_cb).expect(
+                "Failed to get file."
+            )
+            != ""
+        )
+        elapsed = time.time() - start_time
+        assert elapsed < 10, f"File send took too long: {elapsed:.2f} seconds"
+        assert len(event_cb_buffer) > 0
+        # Verify downloaded file matches original
+        with open("tests/assets/pip_boy.fwi", "rb") as f1, open("pip_boy_downloaded.fwi", "rb") as f2:
+            assert f1.read() == f2.read(), "Downloaded file does not match original file."
+        # Clean up downloaded file
+        os.remove("pip_boy_downloaded.fwi")
 
 
 if __name__ == "__main__":

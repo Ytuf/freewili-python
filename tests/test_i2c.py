@@ -24,9 +24,7 @@ class I2CHardwareFoundError(Exception):
 @pytest.mark.xfail(raises=I2CHardwareFoundError)
 def test_hw_i2c_nothing_attached() -> None:
     """Test i2c on a FreeWili with nothing attached."""
-    device = FreeWili.find_first().expect("Failed to find a FreeWili")
-    device.open().expect("Failed to open FreeWili")
-    try:
+    with FreeWili.find_first().expect("Failed to find a FreeWili") as device:
         # Test Polling
         addresses = device.poll_i2c().expect("Failed to poll i2c")
         if len(addresses) != 0:
@@ -40,8 +38,6 @@ def test_hw_i2c_nothing_attached() -> None:
 
         with pytest.raises(Exception):  # noqa: B017
             _ = device.read_i2c(0x0, 0x0, 8).expect("Failed to read i2c")
-    finally:
-        device.close()
 
 
 @pytest.mark.skipif("len(FreeWili.find_all()) == 0")
@@ -53,16 +49,16 @@ def test_hw_i2c_sparkfun_9dof_imu_breakout() -> None:
     ISM330DHCX I2C Address: 0x6B (Default)
     MMC5983MA Magnetometer I2C Address: 0x30
     """
-    device = FreeWili.find_first().expect("Failed to find a FreeWili")
-    device.open().expect("Failed to open FreeWili")
-
-    try:
+    with FreeWili.find_first().expect("Failed to find a FreeWili") as device:
         # Test Polling
         addresses = device.poll_i2c().expect("Failed to poll I2C")
         if len(addresses) == 0:
             raise NoI2CHardwareError(f"Poll found {len(addresses)} I2C devices")
         # This is a workaround for firmware bug in v49. Issue #13
         if len(addresses) == 1 and 0x20 in addresses:
+            raise NoI2CHardwareError(f"Poll found {len(addresses)} I2C devices")
+        # Neptune
+        if 0x48 in addresses:
             raise NoI2CHardwareError(f"Poll found {len(addresses)} I2C devices")
         assert MMC5983MA_ADDR in addresses, f"Expected I2C address {MMC5983MA_ADDR} not found. Got {addresses}!"
         assert ISM330DHCX_ADDR in addresses, f"Expected I2C address {ISM330DHCX_ADDR} not found. Got {addresses}!"
@@ -88,8 +84,6 @@ def test_hw_i2c_sparkfun_9dof_imu_breakout() -> None:
         # Product ID1 0x2F
         response = device.read_i2c(0x30, 0x2F, 1).expect("Failed to read register 0x6B on ISM330DHCX")
         assert response[0] == 0x30, f"Expected 0x30, got {response[0]:02X}"
-    finally:
-        device.close()
 
 
 if __name__ == "__main__":
